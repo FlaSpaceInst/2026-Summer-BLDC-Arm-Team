@@ -24,5 +24,3 @@ This repository contains project documentation, design files, software developme
 Additional technical details, design decisions, requirements, and implementation documentation will be added as development progresses.
 
 ---
-
-# Webhook test
