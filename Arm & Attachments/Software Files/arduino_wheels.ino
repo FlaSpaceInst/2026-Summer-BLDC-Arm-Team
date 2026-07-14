@@ -36,29 +36,71 @@ little wheel = 15 1/2
 
 // accelMax: Maximum RPM increase per step (caps the doubling)
 #define ACCEL_MAX 20
+
+// ================= ARM SPEED CONFIG ==================
+
+// effectorSpd: speed (RPM) of opening/closing end effector
+#define EFFECTOR_SPD 40
+// effectorEase: speed (RPM) of easing the opening/closing of the end effector
+#define EFFECTOR_EASE 20
+// effectorTimeFull: time (ms) for effector to move at full speed when opening/closing
+#define EFFECTOR_TIME_FULL 750
+// effectorTimeEase: time (ms) for effector to move at eased speed when opening/closing
+#define EFFECTOR_TIME_EASE 250
+
+// baseSpd: speed (RPM) of the arm base
+#define BASE_SPD 20
+
+// armSpd: speed (RPM) of the arm shoulder & elbow
+#define ARM_SPD 20
+
 // =====================================================
 
+// back right wheel
 #define X_STEP_PIN 54
 #define X_DIR_PIN 55
 #define X_ENABLE_PIN 38
 
+// front right wheel
 #define Y_STEP_PIN 60
 #define Y_DIR_PIN 61
 #define Y_ENABLE_PIN 56
 
-#define Z_STEP_PIN 46
-#define Z_DIR_PIN 48
-#define Z_ENABLE_PIN 62
+// free driver (end effector)
+#define Z_STEP_PIN 40
+#define Z_DIR_PIN 41
+#define Z_ENABLE_PIN 42
 
-// extruder 1
+// arm base
+#define A0_STEP_PIN 43
+#define A0_DIR_PIN 44
+#define A0_ENABLE_PIN 45
+
+// arm shoulder
+#define A1_STEP_PIN 46
+#define A1_DIR_PIN 47
+#define A1_ENABLE_PIN 48
+
+// arm elbow
+#define A2_STEP_PIN 49
+#define A2_DIR_PIN 50
+#define A2_ENABLE_PIN 51
+
+// why are the left side wheels called "extruders"? - Lucas
+// extruder 1 (back left wheel)
 #define E0_STEP_PIN 26
 #define E0_DIR_PIN 28
 #define E0_ENABLE_PIN 24
 
-// extruder 2
+// extruder 2 (front left wheel)
 #define E1_STEP_PIN 36
 #define E1_DIR_PIN 34
 #define E1_ENABLE_PIN 30
+
+// switch if end effector is rotating the wrong way
+#define DIR_OPEN true
+// switch if base is rotating the wrong way
+#define DIR_CW false
 
 
 
@@ -74,25 +116,47 @@ DRV8825 frontRight(Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, STEPS_PER_REV);
 DRV8825 frontLeft(E1_STEP_PIN, E1_DIR_PIN, E1_ENABLE_PIN, STEPS_PER_REV);
 DRV8825 backLeft(E0_STEP_PIN, E0_DIR_PIN, E0_ENABLE_PIN, STEPS_PER_REV);
 
-// Free driver: Z
-DRV8825 FreeDriver(Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, STEPS_PER_REV);
+// Free driver (end effector): Z
+DRV8825 freeDriver(Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, STEPS_PER_REV);
 
+// arm base: A0
+DRV8825 armBase(A0_STEP_PIN, A0_DIR_PIN, A0_ENABLE_PIN, STEPS_PER_REV);
+
+// arm shoulder: A1
+DRV8825 armShoulder(A1_STEP_PIN, A1_DIR_PIN, A1_ENABLE_PIN, STEPS_PER_REV);
+
+// arm elbow: A2
+DRV8825 armElbow(A2_STEP_PIN, A2_DIR_PIN, A2_ENABLE_PIN, STEPS_PER_REV);
 
 enum COMMANDS {
-  STOP = 0x00,
-  FWD = 0x01,
-  REV = 0x02,
-  LEFT = 0x03,
-  RIGHT = 0x04,
-  HALT = 0xff,
-  FRONT = 0x05,
-  BACK = 0x06,
-  RAISE = 0X07,
-  LOWER = 0X08,
+  STOP = 0x00, // stops wheels
+  FWD = 0x01, // drive forward
+  REV = 0x02, // drive backwards
+  LEFT = 0x03, // turn left
+  RIGHT = 0x04, // turn right
+  HALT = 0xff, // seems unused
+  FRONT = 0x05, // seems unused
+  BACK = 0x06, // seems unused
+  RAISE = 0X07, // seems unused
+  LOWER = 0X08, // seems unused
 
   // 2026 Team's Additions
-  OPEN_EFFECTOR = 0x09,
-  CLOSE_EFFECTOR = 0x0A
+  OPEN_EFFECTOR = 0x09, // start opening end effector
+  CLOSE_EFFECTOR = 0x0A, // start closing end effector
+  STOP_EFFECTOR = 0x0B, // forcibly stops the opening/closing of end effector
+  ARM_ROTATE_CW = 0x0C, // rotates base clockwise
+  ARM_ROTATE_CCW = 0x0D, // rotates base counterclockwise
+  ARM_STOP_ROTATE = 0x0E, // stops base rotation
+  ARM_FWD_SHOULDER = 0x0F, // rotates shoulder forwards
+  ARM_REV_SHOULDER = 0x10, // rotates shoulder backwards
+  ARM_STOP_SHOULDER = 0x11, // stops shoulder rotation
+  ARM_FWD_ELBOW = 0x12, // rotates elbow forwards
+  ARM_REV_ELBOW = 0x13, // rotates elbow backwards
+  ARM_STOP_ELBOW = 0x14, // stops elbow rotation
+  ARM_FWD_BOTH = 0x15, // rotates shoulder & elbow forwards
+  ARM_REV_BOTH = 0x16, // rotates shoulder & elbow backwards
+  ARM_STOP_BOTH = 0x17, // stops shoulder & elbow rotation
+  ARM_STOP_ALL = 0x18 // stops effector, base, shoulder, & elbow
 };
 
 byte last_command = STOP;
@@ -110,6 +174,9 @@ long idle_right_speed = 1;
 long time = millis();
 long timeout = 0;
 long time1 = 0;
+
+// Set to current time to activate the end effector, or current time minus EFFECTOR_TIME_FULL and EFFECTOR_TIME_EASE to force stop
+long timeEffectorStart = time - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;
 
 // direction that indicates what side is going where
 bool rs = false;  // right side
@@ -138,7 +205,7 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, LOW);
 
-  // wheels right/left initial
+  // right wheels front/back initial
   frontRight.set_enabled(true);
   frontRight.set_direction(false);
   frontRight.set_speed(0);
@@ -147,7 +214,7 @@ void setup() {
   backRight.set_direction(false);
   backRight.set_speed(0);
 
-  // shoulders front/back initial
+  // left wheels front/back initial
   frontLeft.set_enabled(true);
   frontLeft.set_direction(false);
   frontLeft.set_speed(0);
@@ -155,6 +222,24 @@ void setup() {
   backLeft.set_enabled(true);
   backLeft.set_direction(false);
   backLeft.set_speed(0);
+
+  // free driver (end effector) initial
+  freeDriver.set_enabled(true);
+  freeDriver.set_direction(false);
+  freeDriver.set_speed(0);
+
+  // arm base/shoulder/elbow initial
+  armBase.set_enabled(true);
+  armBase.set_direction(false);
+  armBase.set_speed(0);
+
+  armShoulder.set_enabled(true);
+  armShoulder.set_direction(false);
+  armShoulder.set_speed(0);
+
+  armElbow.set_enabled(true);
+  armElbow.set_direction(false);
+  armElbow.set_speed(0);
 }
 
 long last_frequency_check_time = 0;
@@ -166,9 +251,9 @@ void loop() {
   time1 = millis();
   update_motors();
 
-
   read_serial();
 
+  checkEffectorEasing();
 
   // Controlls the slow start for the stepper motor checks if a certain amount of miliseconds have passed and if we want to speed up
   if (time1 - time >= ACCEL_INTERVAL && on == 1) {
@@ -194,7 +279,10 @@ void update_motors() {
   frontLeft.update();
 
   // 2026 Team's Additions
-  FreeDriver.update();
+  freeDriver.update();
+  armBase.update();
+  armShoulder.update();
+  armElbow.update();
 }
 // getting hung up and sending stop when we dont want to stop
 // checks for commands being sent over the Serial port to the arduino/Ramps board
@@ -222,7 +310,6 @@ void read_serial() {
         stop = 1;
         on = 0;
         Stop();
-        FreeDriver.set_enabled(false);
         break;
 
       case FWD:
@@ -318,25 +405,109 @@ void read_serial() {
 
 
         break;
+      
       // 2026 Team's Addition
       case OPEN_EFFECTOR:
-        FreeDriver.set_enabled(true);
-        FreeDriver.set_direction(true);
-        FreeDriver.set_speed(40);
+        freeDriver.set_direction(DIR_OPEN);
+        timeEffectorStart = time1;
         break;
 
       case CLOSE_EFFECTOR:
-        FreeDriver.set_enabled(true);
-        FreeDriver.set_direction(false);
-        FreeDriver.set_speed(40);
+        freeDriver.set_direction(!DIR_OPEN);
+        timeEffectorStart = time1;
         break;
 
+      case STOP_EFFECTOR:
+        timeEffectorStart = time1 - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;
+        break;
+
+      case ARM_ROTATE_CW:
+        armBase.set_direction(DIR_CW);
+        armBase.set_speed(BASE_SPD);
+        break;
+      
+      case ARM_ROTATE_CCW:
+        armBase.set_direction(!DIR_CW);
+        armBase.set_speed(BASE_SPD);
+        break;
+
+      case ARM_STOP_ROTATE:
+        armBase.set_speed(0);
+        break;
+
+      case ARM_FWD_ELBOW:
+        armElbow.set_direction(true);
+        armElbow.set_speed(ARM_SPD);
+        break;
+      
+      case ARM_REV_ELBOW:
+        armElbow.set_direction(false);
+        armElbow.set_speed(ARM_SPD);
+        break;
+      
+      case ARM_STOP_ELBOW:
+        armElbow.set_speed(0);
+        break;
+      
+      case ARM_FWD_SHOULDER:
+        armShoulder.set_direction(true);
+        armShoulder.set_speed(ARM_SPD);
+        break;
+      
+      case ARM_REV_SHOULDER:
+        armShoulder.set_direction(false);
+        armShoulder.set_speed(ARM_SPD);
+        break;
+      
+      case ARM_STOP_SHOULDER:
+        armShoulder.set_speed(0);
+        break;
+
+      case ARM_FWD_BOTH:
+        armElbow.set_direction(true);
+        armElbow.set_speed(ARM_SPD);
+        armShoulder.set_direction(true);
+        armShoulder.set_speed(ARM_SPD);
+        break;
+      
+      case ARM_REV_BOTH:
+        armElbow.set_direction(false);
+        armElbow.set_speed(ARM_SPD);
+        armShoulder.set_direction(false);
+        armShoulder.set_speed(ARM_SPD);
+        break;
+      
+      case ARM_STOP_BOTH:
+        armElbow.set_speed(0);
+        armShoulder.set_speed(0);
+        break;
+
+      case ARM_STOP_ALL:
+        armBase.set_speed(0);
+        armShoulder.set_speed(0);
+        armElbow.set_speed(0);
+        timeEffectorStart = time1 - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;
+        break;
+      
       default:
         digitalWrite(LED_BUILTIN, LOW);
         stop = 1;
         on = 0;
         Stop();
         break;
+    }
+  }
+}
+
+// Adjust effector speed based on time since start of movement
+void checkEffectorEasing() {
+  if (freeDriver.get_enabled()) {
+    if (time1 - timeEffectorStart < EFFECTOR_TIME_FULL) {
+      freeDriver.set_speed(EFFECTOR_SPD);
+    } else if (time1 - timeEffectorStart < EFFECTOR_TIME_FULL + EFFECTOR_TIME_EASE) {
+      freeDriver.set_speed(EFFECTOR_EASE);
+    } else {
+      freeDriver.set_speed(0);
     }
   }
 }
