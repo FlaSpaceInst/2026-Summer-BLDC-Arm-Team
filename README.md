@@ -26,7 +26,7 @@ The rover platform, base cart systems, software architecture, ROS integration, n
 
 Original repository:
 
-https://github.com/FlaSpaceInst/2023-RE-RASSOR-Extension/tree/cart_desktop/ezrassor_rover/ros-scripts
+https://github.com/FlaSpaceInst/2023-RE-RASSOR-Extension/tree/cart_desktop
 
 The 2026 team did not develop the original rover platform and does not claim authorship of the inherited rover software, control systems, or base vehicle design.
 
