@@ -2,9 +2,11 @@
 
 ## Overview
 
-The goal of this project is to design, build, and integrate a robotic arm with the existing RE-RASSOR rover platform. The arm will be capable of manipulating test pavers while maintaining compatibility with the rover's existing hardware and software systems.
+The 2026 RE-RASSOR Arm Development Team is responsible for designing, prototyping, and integrating a modular robotic arm with the existing RE-RASSOR rover platform. The project builds upon previous RE-RASSOR Senior Design efforts while introducing new mechanical, software, and systems engineering capabilities focused on robotic manipulation.
 
-In addition to developing a functional arm, this project aims to improve documentation and knowledge transfer practices to support future RE-RASSOR teams and ensure that future development efforts can build upon the work completed during this project cycle.
+The preliminary design phase has been completed and includes engineering requirements, trade studies, system architecture, project planning, software communication design, and a comprehensive design package supporting future development. Current efforts are focused on CAD development, prototype fabrication, software integration, and validation.
+
+In addition to developing a functional robotic arm, this project emphasizes documentation, maintainability, and knowledge transfer to ensure future RE-RASSOR teams can continue development rather than restarting the design process.
 
 ---
 
@@ -102,13 +104,30 @@ https://github.com/FlaSpaceInst/2025-Fall-UCF-BLDC-Motor-Control
 
 ### Arm & Attachments
 
-Contains development work specific to the 2026 RE-RASSOR Arm Development Team, including:
+Contains original development work produced by the 2026 RE-RASSOR Arm Development Team, including all mechanical design, prototype development, manufacturing resources, and supporting documentation for the robotic arm.
 
-- Arm CAD models
-- End effector designs
-- Prototype components
-- Mechanical design files
-- Assembly resources
+#### CAD Files
+
+Contains all CAD resources developed throughout the project lifecycle.
+
+**End Effector Designs**
+- Gripper concepts
+- End effector assemblies
+- Attachment mechanisms
+- Supporting design iterations
+
+**STL & Development Files**
+- Native CAD models
+- Assembly files
+- Prototype development resources
+- Editable design files
+
+**G-code & Printing Files**
+- Printable STL exports
+- Slicer projects
+- G-code generated for prototype fabrication
+- Manufacturing resources
+
 
 ### Documentation & Testing
 
@@ -117,7 +136,7 @@ Contains documentation produced throughout the project lifecycle, including:
 - Design reports
 - Testing procedures
 - Validation results
-- Meeting notes
+- Meeting notes where applicable
 - Research summaries
 - Sponsor deliverables
 
@@ -125,14 +144,18 @@ Contains documentation produced throughout the project lifecycle, including:
 
 ## Current Development Status
 
-Current development efforts are focused on:
+The preliminary design phase has been completed, establishing the engineering foundation for the remainder of the project. Major deliverables completed during this phase include engineering requirements, system architecture, communication design, project planning, trade studies, development scheduling, and a comprehensive preliminary design document.
 
-- Reviewing inherited rover systems
-- Evaluating previous BLDC motor development
-- Modifying and extending existing CAD models
-- Developing a functional robotic arm prototype
-- Integrating arm controls into the rover software architecture
-- Establishing testing procedures and documentation standards
+Current development efforts have transitioned toward implementation and are focused on:
+
+- Refining mechanical CAD assemblies and individual components
+- Fabricating and assembling prototype hardware
+- Developing the robotic arm user interface
+- Integrating HTTP communication with the existing rover architecture
+- Preparing subsystem testing and validation procedures
+- Expanding project documentation as development progresses
+
+Future development will focus on complete subsystem integration, prototype validation, iterative design improvements, and final system testing throughout the Fall 2026 semester.
 
 ---
 
