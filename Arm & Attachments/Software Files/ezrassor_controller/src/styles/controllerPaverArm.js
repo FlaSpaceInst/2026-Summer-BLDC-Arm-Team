@@ -121,6 +121,12 @@ const ControllerStyle = StyleSheet.create({
     backgroundColor: '#5D6061'
   },
 
+  armControlColumn: {
+    flex: 1,
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+  },
+
   buttonBackground: {
     flex: 1, 
     maxHeight: 100,
@@ -151,7 +157,7 @@ const ControllerStyle = StyleSheet.create({
     marginBottom: 10,
     marginLeft: 10,
     marginRight: 10,
-    width: 180,
+    flex: 1,
   },
 
   mainButtonTextVertical: {

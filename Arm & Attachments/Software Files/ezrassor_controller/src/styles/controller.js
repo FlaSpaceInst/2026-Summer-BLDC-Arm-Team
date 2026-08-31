@@ -312,6 +312,22 @@ const ControllerStyle = StyleSheet.create({
     paddingVertical: 20,
   },
 
+  headerModeButton: {
+    flex: 1.8,
+    padding: 3,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  headerModeButtonText: {
+    fontFamily: 'NASA',
+    fontSize: 14,
+    color: '#fff',
+    marginLeft: 6,
+    textAlign: 'center',
+  },
+  
   textLarge: {
     fontFamily: 'NASA',
     fontSize: 30,
