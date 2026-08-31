@@ -326,17 +326,17 @@ export default class ControllerScreen extends React.Component {
             />
           </TouchableOpacity>
 
-          {/*Paver Arm controls*/}
+          {/* Arm control mode switch. */}
           <TouchableOpacity
-            style={{ flex: 1, padding: 3 }}
+            style={ControllerStyle.headerModeButton}
             onPress={() => this.props.navigation.replace("Paver Arm Controller Screen", { currentIp: this.state.ip })}
           >
             <MaterialCommunityIcons
-              style={{ marginLeft: 'auto' }}
               name="robot-industrial"
-              size={32}
+              size={28}
               color="#fff"
             />
+            <Text style={ControllerStyle.headerModeButtonText}>Arm Mode</Text>
           </TouchableOpacity>
           
           {/* Autonomy button. */}

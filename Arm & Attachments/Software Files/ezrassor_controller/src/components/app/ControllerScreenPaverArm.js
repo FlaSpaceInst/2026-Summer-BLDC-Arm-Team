@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import Modal from "react-native-modal";
 import EZRASSOR from 'ezrassor-app/src/api/ezrassor-service-paver-arm' 
 import ControllerStyle from 'ezrassor-app/src/styles/controllerPaverArm';
@@ -12,11 +12,10 @@ import {
   TouchableHighlight,
   TouchableOpacity,
   StatusBar,
-  KeyboardAvoidingView,
-  TextInput,
 } from 'react-native';
 import { FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Font  from 'expo-font';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const CONNECTION_POLLING_INTERVAL = 2000;
 const CONNECTION_POLLING_TIMEOUT = 4000;
@@ -51,9 +50,9 @@ export default class ControllerScreen extends React.Component {
   async componentDidMount() {
     await Font.loadAsync({ NASA: require('../../../assets/nasa.ttf') });
     await this.getIpFromStorage();
-    this.state.ip = this.props.route.params.currentIp;
-    // important line: sets the IP address for current EZRASSOR instance
-    this.EZRASSOR.host = this.state.ip;
+    if (this.props.route.params?.currentIp) {
+      this.changeIP(this.props.route.params.currentIp);
+    }
 
     this.setState({ isLoading: false });
 
@@ -170,13 +169,56 @@ export default class ControllerScreen extends React.Component {
   };
 
   renderEndEffectorArm= () => {    
-    if (this.state.isEndEffector()) {
-      return <Image source={require('../../../assets/PaverArmEndEffector.png')} style={{width:"100%", height:"100%", resizeMode:"contain"}}/>;
+    if (this.state.isEndEffectorSelected) {
+      return <Image source={require('../../../assets/PaverArmWrist.png')} style={{width:"100%", height:"100%", resizeMode:"contain"}}/>;
     } else {
       return null;
     }
   };
+  
+  selectArmPart(part) {
+    this.setState({
+      isDefault: false,
+      isPlateSelected: part === Robot.PLATE,
+      isShoulderSelected: part === Robot.SHOULDER,
+      isForearmSelected: part === Robot.FOREARM,
+      isEndEffectorSelected: part === Robot.ENDEFFECTOR,
+    });
+  }
 
+  sendJointOperation(part, operation) {
+    this.selectArmPart(part);
+    this.sendOperation(part, operation);
+  }
+
+  renderJointControl(label, part, positiveLabel, negativeLabel, positiveIcon, negativeIcon, textStyle) {
+    return (
+      <View style={ControllerStyle.PaverArmBaseButton}>
+        <Text style={ControllerStyle.buttonTextCenter}>{label}</Text>
+        <View style={{flex: 2, flexDirection: 'row'}}>
+          <View style={ControllerStyle.buttonBackground}>
+            <TouchableOpacity
+              onPressIn={() => this.sendJointOperation(part, Operation.POSITIVE)}
+              onPressOut={() => this.sendOperation(part, Operation.STOP)}
+              hitSlop={{top: 20, bottom: 20, left: 70, right: 70}}>
+              <Text style={textStyle}>{positiveLabel}</Text>
+              <FontAwesome style={ControllerStyle.buttonImage} name={positiveIcon} size={35} color='#fff'/>
+            </TouchableOpacity>
+          </View>
+
+          <View style={ControllerStyle.buttonBackground}>
+            <TouchableOpacity
+              onPressIn={() => this.sendJointOperation(part, Operation.NEGATIVE)}
+              onPressOut={() => this.sendOperation(part, Operation.STOP)}
+              hitSlop={{top: 20, bottom: 20, left: 70, right: 70}}>
+              <Text style={textStyle}>{negativeLabel}</Text>
+              <FontAwesome style={ControllerStyle.buttonImage} name={negativeIcon} size={35} color='#fff'/>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  }
   render() {
 
     // Loading font
@@ -317,193 +359,46 @@ export default class ControllerScreen extends React.Component {
           </TouchableOpacity>
         </FadeInView>
 
-        {/* Control pad:  */}
+        {/* Arm control mode: three joint-control groups with two direction buttons per joint. */}
         <FadeInView style={ControllerStyle.buttonLayoutContainer}>
           <View style={ControllerStyle.ArmContainer}> 
-            <View style={{flex: 2 , flexDirection: 'row'}}>
-
-              {/* Left controls */}
-              <View style={{flex: 2 , flexDirection: 'column'}}>
-                <View style={{flex: 2 , flexDirection: 'column'}}>
-                  <View style={ControllerStyle.PaverArmBaseButton}>
-                    <Text style={ControllerStyle.buttonTextCenter}>Shoulder</Text>
-                    {/* Shoulder controls */}
-                    <View style={{flex: 2 , flexDirection: 'row'}}>
-                      {/* Shoulder Up */}
-                      <View style={ControllerStyle.buttonBackground} >
-                        <TouchableOpacity 
-                            onPressIn={() => {this.sendOperation(Robot.SHOULDER, Operation.POSITIVE); 
-                                              this.setState({ isDefault: false }); 
-                                              this.setState({ isPlateSelected: false });
-                                              this.setState({ isShoulderSelected: true });
-                                              this.setState({ isForearmSelected: false });
-                                              this.setState({ isEndEffectorSelected: false });}} 
-                            hitSlop={{top: 20, bottom: 20, left: 70, right: 70}}
-                            >  
-                            <Text style={ControllerStyle.mainButtonTextVertical}>Up</Text>
-                          <FontAwesome tyle={ControllerStyle.buttonImage} name="chevron-up" size={35} color='#fff'/>
-                        </TouchableOpacity>
-                      </View>
-                      
-                      {/* Shoulder Down */}
-                      <View style={ControllerStyle.buttonBackground} >
-                      <TouchableOpacity 
-                          onPressIn={() => {this.sendOperation(Robot.SHOULDER, Operation.NEGATIVE); 
-                                            this.setState({ isDefault: false }); 
-                                            this.setState({ isPlateSelected: false });
-                                            this.setState({ isShoulderSelected: true });
-                                            this.setState({ isForearmSelected: false });
-                                            this.setState({ isEndEffectorSelected: false })}} 
-                          
-                          hitSlop={{top: 20, bottom: 20, left: 70, right: 70}}
-                          >  
-                          <Text style={ControllerStyle.mainButtonTextVertical}>Down</Text>
-                        <FontAwesome tyle={ControllerStyle.buttonImage} name="chevron-down" size={35} color='#fff'/>
-                      </TouchableOpacity>
-                      </View>
-                    </View>
-                  </View>
-
-                  {/* Plate  */}
-                  <View style={ControllerStyle.PaverArmBaseButton}>
-                    <Text style={ControllerStyle.buttonTextCenter}>Plate</Text>
-                    {/* Plate controls */}
-                    <View style={{flex: 2 , flexDirection: 'row'}}>
-                      {/* Plate left */}
-                      <View style={ControllerStyle.buttonBackground} >
-                        <TouchableOpacity 
-                            onPressIn={() => {this.sendOperation(Robot.PLATE, Operation.POSITIVE);
-                                              this.setState({ isDefault: false }); 
-                                              this.setState({ isPlateSelected: true });
-                                              this.setState({ isShoulderSelected: false });
-                                              this.setState({ isForearmSelected: false });
-                                              this.setState({ isEndEffectorSelected: false })}} 
-                            
-                            hitSlop={{top: 20, bottom: 20, left: 70, right: 70}}
-                            >  
-                            <Text style={ControllerStyle.mainButtonTextHorizontal}>Left</Text>
-                          <FontAwesome tyle={ControllerStyle.buttonImage} name="rotate-left" size={30} color='#fff'/>
-                        </TouchableOpacity>
-                      </View>
-                      
-                      {/* Plate Right */}
-                      <View style={ControllerStyle.buttonBackground} >
-                      <TouchableOpacity 
-                          onPressIn={() => {this.sendOperation(Robot.PLATE, Operation.NEGATIVE); 
-                                            this.setState({ isDefault: false }); 
-                                            this.setState({ isPlateSelected: true });
-                                            this.setState({ isShoulderSelected: false });
-                                            this.setState({ isForearmSelected: false });
-                                            this.setState({ isEndEffectorSelected: false })}}
-                          
-                          hitSlop={{top: 20, bottom: 20, left: 70, right: 70}}
-                          >  
-                          <Text style={ControllerStyle.mainButtonTextHorizontal}>Right</Text>
-                        <FontAwesome tyle={ControllerStyle.buttonImage} name="rotate-right" size={30} color='#fff'/>
-                      </TouchableOpacity>
-                      </View>
-                    </View>
-                  </View>
-                  
-                </View>
+            <View style={{flex: 2, flexDirection: 'row'}}>
+              <View style={ControllerStyle.armControlColumn}>
+                {this.renderJointControl(
+                  'Shoulder',
+                  Robot.SHOULDER,
+                  'Up',
+                  'Down',
+                  'chevron-up',
+                  'chevron-down',
+                  ControllerStyle.mainButtonTextVertical
+                )}
+                {this.renderJointControl(
+                  'Forearm',
+                  Robot.FOREARM,
+                  'Up',
+                  'Down',
+                  'chevron-up',
+                  'chevron-down',
+                  ControllerStyle.mainButtonTextVertical
+                )}
+                {this.renderJointControl(
+                  'Wrist',
+                  Robot.ENDEFFECTOR,
+                  'Up',
+                  'Down',
+                  'chevron-up',
+                  'chevron-down',
+                  ControllerStyle.mainButtonTextVertical
+                )}
               </View>
 
-              {/* Center Arm */}
-              {<View style={ControllerStyle.PaverArmBackground}>
+              <View style={ControllerStyle.PaverArmBackground}>
                 {this.renderDefaultArm()}
-                {this.renderPlateArm()}
                 {this.renderShoulderArm()}
                 {this.renderForearmArm()}
                 {this.renderEndEffectorArm()}
-              </View>}
-
-              {/* Right controls */}
-              <View style={{flex: 2 , flexDirection: 'column'}}>
-                <View style={{flex: 2 , flexDirection: 'column'}}>
-
-                  {/* End Effector */}
-                  <View style={ControllerStyle.PaverArmBaseButton}>
-                    <Text style={ControllerStyle.buttonTextCenter}>Hand</Text>
-                    {/* End Effector controls */}
-                    <View style={{flex: 2 , flexDirection: 'row'}}>
-                      {/* End Effector Up */}
-                      <View style={ControllerStyle.buttonBackground} >
-                      <TouchableOpacity 
-                          onPressIn={() => {this.sendOperation(Robot.ENDEFFECTOR, Operation.POSITIVE);
-                                            this.setState({ isDefault: false }); 
-                                            this.setState({ isPlateSelected: false });
-                                            this.setState({ isShoulderSelected: false });
-                                            this.setState({ isForearmSelected: false });
-                                            this.setState({ isEndEffectorSelected: true })}}  
-                          
-                          hitSlop={{top: 20, bottom: 20, left: 70, right: 70}}
-                        >  
-                            <Text style={ControllerStyle.mainButtonTextVertical}>Up</Text>
-                          <FontAwesome tyle={ControllerStyle.buttonImage} name="chevron-up" size={35} color='#fff'/>
-                        </TouchableOpacity>
-                      </View>
-                      {/* End Effector Down */}
-                      <View style={ControllerStyle.buttonBackground} >
-                      <TouchableOpacity 
-                          onPressIn={() => {this.sendOperation(Robot.ENDEFFECTOR, Operation.NEGATIVE);
-                                            this.setState({ isDefault: false }); 
-                                            this.setState({ isPlateSelected: false });
-                                            this.setState({ isShoulderSelected: false });
-                                            this.setState({ isForearmSelected: false });
-                                            this.setState({ isEndEffectorSelected: true })}} 
-                          
-                          hitSlop={{top: 20, bottom: 20, left: 70, right: 70}}
-                          >  
-                          <Text style={ControllerStyle.mainButtonTextVertical}>Down</Text>
-                        <FontAwesome tyle={ControllerStyle.buttonImage} name="chevron-down" size={35} color='#fff'/>
-                      </TouchableOpacity>
-                      </View>
-                    </View>
-                  </View>
-
-                  {/* Forearm  */}
-                  <View style={ControllerStyle.PaverArmBaseButton}>
-                    <Text style={ControllerStyle.buttonTextCenter}>Forearm</Text>
-                    {/* Forearm controls */}
-                    <View style={{flex: 2 , flexDirection: 'row'}}>
-                      {/* Forearm Up */}
-                      <View style={ControllerStyle.buttonBackground} >
-                        <TouchableOpacity 
-                            onPressIn={() => {this.sendOperation(Robot.FOREARM, Operation.POSITIVE);
-                                              this.setState({ isDefault: false }); 
-                                              this.setState({ isPlateSelected: false });
-                                              this.setState({ isShoulderSelected: false });
-                                              this.setState({ isForearmSelected: true });
-                                              this.setState({ isEndEffectorSelected: false })}} 
-                            
-                            hitSlop={{top: 20, bottom: 20, left: 70, right: 70}}
-                            
-                            >  
-                            <Text style={ControllerStyle.mainButtonTextVertical}>Up</Text>
-                          <FontAwesome tyle={ControllerStyle.buttonImage} name="chevron-up" size={35} color='#fff'/>
-                        </TouchableOpacity>
-                      </View>
-                      
-                      {/* Forearm Down */}
-                      <View style={ControllerStyle.buttonBackground} >
-                      <TouchableOpacity 
-                          onPressIn={() => {this.sendOperation(Robot.FOREARM, Operation.NEGATIVE);
-                                            this.setState({ isDefault: false }); 
-                                            this.setState({ isPlateSelected: false });
-                                            this.setState({ isShoulderSelected: false });
-                                            this.setState({ isForearmSelected: true });
-                                            this.setState({ isEndEffectorSelected: false })}}  
-                          
-                          hitSlop={{top: 20, bottom: 20, left: 70, right: 70}}
-                          >  
-                          <Text style={ControllerStyle.mainButtonTextVertical}>Down</Text>
-                        <FontAwesome tyle={ControllerStyle.buttonImage} name="chevron-down" size={35} color='#fff'/>
-                      </TouchableOpacity>
-                      </View>
-                    </View>
-                  </View>
-                  
-                </View>
+              
               </View>
             </View>
           </View>
