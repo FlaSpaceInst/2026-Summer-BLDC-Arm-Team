@@ -252,6 +252,7 @@ void setup() {
   armElbow.set_speed(0);*/
 }
 
+// seemingly unused variables
 long last_frequency_check_time = 0;
 long counter = 0;
 
