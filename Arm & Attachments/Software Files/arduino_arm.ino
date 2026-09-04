@@ -105,4 +105,18 @@ void setup() {
   // set up the LED for ability to see if recieving commands
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, LOW);
+
+  // arm shoulder/elbow initial
+  armShoulder.set_enabled(true);
+  armShoulder.set_direction(false);
+  armShoulder.set_speed(0);
+
+  armElbow.set_enabled(true);
+  armElbow.set_direction(false);
+  armElbow.set_speed(0);
+
+  // end effector initial
+  endEffector.set_enabled(true);
+  endEffector.set_direction(false);
+  endEffector.set_speed(0);
 }
