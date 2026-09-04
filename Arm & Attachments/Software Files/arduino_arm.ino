@@ -89,3 +89,10 @@ byte last_command = STOP;
 
 long last_command_time = 0;   // ms since last command
 long command_timeout = 1000;  // ms to wait for next command before stopping
+
+long time = millis();
+long timeout = 0;
+long time1 = 0;
+
+// Set to current time to activate the end effector, or current time minus EFFECTOR_TIME_FULL and EFFECTOR_TIME_EASE to force stop
+long timeEffectorStart = time - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;
