@@ -126,6 +126,13 @@ void setup() {
   endEffector.set_speed(0);
 }
 
+// updates the motors
+void updateMotors() {
+  armShoulder.update();
+  armElbow.update();
+  endEffector.update();
+}
+
 // Adjust effector speed based on time since start of movement
 void checkEffectorEasing() {
   if (endEffector.get_enabled()) {
