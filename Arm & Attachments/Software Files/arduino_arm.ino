@@ -133,6 +133,16 @@ void update_motors() {
   endEffector.update();
 }
 
+// checks for commands being sent over the Serial port to the arduino/Ramps board
+void read_serial() {
+  if (Serial.available()) {
+    
+    last_command = Serial.read();
+
+    //TODO
+  }
+}
+
 // Adjust effector speed based on time since start of movement
 void checkEffectorEasing() {
   if (endEffector.get_enabled()) {
