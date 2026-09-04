@@ -159,6 +159,67 @@ void read_serial() {
       case STOP_EFFECTOR:
         timeEffectorStart = time1 - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;
         break;
+
+      case ARM_FWD_ELBOW:
+        armElbow.set_direction(true);
+        armElbow.set_speed(ARM_SPD);
+        break;
+      
+      case ARM_REV_ELBOW:
+        armElbow.set_direction(false);
+        armElbow.set_speed(ARM_SPD);
+        break;
+      
+      case ARM_STOP_ELBOW:
+        armElbow.set_speed(0);
+        break;
+      
+      case ARM_FWD_SHOULDER:
+        armShoulder.set_direction(true);
+        armShoulder.set_speed(ARM_SPD);
+        break;
+      
+      case ARM_REV_SHOULDER:
+        armShoulder.set_direction(false);
+        armShoulder.set_speed(ARM_SPD);
+        break;
+      
+      case ARM_STOP_SHOULDER:
+        armShoulder.set_speed(0);
+        break;
+
+      case ARM_FWD_BOTH:
+        armElbow.set_direction(true);
+        armElbow.set_speed(ARM_SPD);
+        armShoulder.set_direction(true);
+        armShoulder.set_speed(ARM_SPD);
+        break;
+      
+      case ARM_REV_BOTH:
+        armElbow.set_direction(false);
+        armElbow.set_speed(ARM_SPD);
+        armShoulder.set_direction(false);
+        armShoulder.set_speed(ARM_SPD);
+        break;
+      
+      case ARM_STOP_BOTH:
+        armElbow.set_speed(0);
+        armShoulder.set_speed(0);
+        break;
+
+      case ARM_STOP_ALL:
+        //armBase.set_speed(0);
+        armShoulder.set_speed(0);
+        armElbow.set_speed(0);
+        timeEffectorStart = time1 - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;
+        break;
+      
+      default:
+        digitalWrite(LED_BUILTIN, LOW);
+        stop = 1;
+        on = 0;
+        Stop();
+        break;
     }
   }
 }
