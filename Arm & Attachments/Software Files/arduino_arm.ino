@@ -246,3 +246,9 @@ void checkEffectorEasing() {
     }
   }
 }
+
+// The stop function to be called to slowly stop the motors
+void Stop() {
+  armShoulder.set_speed(0);
+  armElbow.set_speed(0);
+}
