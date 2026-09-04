@@ -675,6 +675,7 @@ void Speedup(bool left, bool right) {
 
 // The stop function to be called to slowly stop the motors
 void Stop() {
+  armBase.set_speed(0);
   if (abs(idle_left_speed) <= ACCEL_INCREMENT && abs(idle_right_speed) <= ACCEL_INCREMENT) {
     idle_left_speed = 1;
     idle_right_speed = 1;
