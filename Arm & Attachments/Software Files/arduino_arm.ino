@@ -213,6 +213,16 @@ void read_serial() {
         armElbow.set_speed(0);
         timeEffectorStart = time1 - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;
         break;
+
+      // All of these are handled fully by the other arduino
+      case FWD:
+      case REV:
+      case LEFT:
+      case RIGHT:
+      case ARM_ROTATE_CW:
+      case ARM_ROTATE_CCW:
+      case ARM_STOP_ROTATE:
+        break;
       
       default:
         digitalWrite(LED_BUILTIN, LOW);
