@@ -39,7 +39,8 @@ little wheel = 15 1/2
 
 // ================= ARM SPEED CONFIG ==================
 
-/*// effectorSpd: speed (RPM) of opening/closing end effector
+/* Removed, because a separate arduino is needed
+// effectorSpd: speed (RPM) of opening/closing end effector
 #define EFFECTOR_SPD 40
 // effectorEase: speed (RPM) of easing the opening/closing of the end effector
 #define EFFECTOR_EASE 20
@@ -52,7 +53,8 @@ little wheel = 15 1/2
 #define BASE_SPD 20
 
 // armSpd: speed (RPM) of the arm shoulder & elbow
-//#define ARM_SPD 20
+// Removed, because a separate arduino is needed
+// #define ARM_SPD 20
 
 // =====================================================
 
@@ -71,7 +73,7 @@ little wheel = 15 1/2
 #define Z_DIR_PIN 48
 #define Z_ENABLE_PIN 62
 
-/* Not how pins work
+/* Removed, because a separate arduino is needed
 // arm base
 #define A0_STEP_PIN 43
 #define A0_DIR_PIN 44
@@ -122,7 +124,7 @@ DRV8825 backLeft(E0_STEP_PIN, E0_DIR_PIN, E0_ENABLE_PIN, STEPS_PER_REV);
 // Free driver (arm base): Z
 DRV8825 armBase(Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, STEPS_PER_REV);
 
-/*
+/* Removed, because a separate arduino is needed
 // arm base: A0
 DRV8825 armBase(A0_STEP_PIN, A0_DIR_PIN, A0_ENABLE_PIN, STEPS_PER_REV);
 
@@ -228,7 +230,8 @@ void setup() {
   backLeft.set_direction(false);
   backLeft.set_speed(0);
 
-  /*// free driver (end effector) initial
+  /* Removed, because a separate arduino is needed
+  // free driver (end effector) initial
   freeDriver.set_enabled(true);
   freeDriver.set_direction(false);
   freeDriver.set_speed(0);*/
@@ -238,7 +241,8 @@ void setup() {
   armBase.set_direction(false);
   armBase.set_speed(0);
 
-  /*armShoulder.set_enabled(true);
+  /* Removed, because a separate arduino is needed
+  armShoulder.set_enabled(true);
   armShoulder.set_direction(false);
   armShoulder.set_speed(0);
 
