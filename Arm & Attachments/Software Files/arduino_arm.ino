@@ -125,3 +125,16 @@ void setup() {
   endEffector.set_direction(false);
   endEffector.set_speed(0);
 }
+
+// Adjust effector speed based on time since start of movement
+void checkEffectorEasing() {
+  if (endEffector.get_enabled()) {
+    if (time1 - timeEffectorStart < EFFECTOR_TIME_FULL) {
+      endEffector.set_speed(EFFECTOR_SPD);
+    } else if (time1 - timeEffectorStart < EFFECTOR_TIME_FULL + EFFECTOR_TIME_EASE) {
+      endEffector.set_speed(EFFECTOR_EASE);
+    } else {
+      endEffector.set_speed(0);
+    }
+  }
+}
