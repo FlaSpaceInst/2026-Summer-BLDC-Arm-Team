@@ -126,6 +126,28 @@ void setup() {
   endEffector.set_speed(0);
 }
 
+void loop() {
+
+  time1 = millis();
+  update_motors();
+
+  read_serial();
+
+  checkEffectorEasing();
+
+  // call stop function if stopping
+  if (stop == 1) {
+    Stop();
+  }
+  
+  // call stop function if we get stuck in a loop and it wont slow down after 2500 miliseconds
+  if (timeout == 750) {
+    stop = 1;
+    on = 0;
+    Stop();
+  }
+}
+
 // updates the motors
 void update_motors() {
   armShoulder.update();
