@@ -53,6 +53,10 @@ DRV8825 armElbow(Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, STEPS_PER_REV);
 // end effector: Z
 DRV8825 endEffector(Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, STEPS_PER_REV);
 
+// global checkers for starting or stopping
+int on = 0;
+int stop = 0;
+
 // Command signal hex ids
 enum COMMANDS {
   STOP = 0x00, // stops wheels
