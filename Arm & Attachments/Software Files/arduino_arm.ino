@@ -139,7 +139,14 @@ void read_serial() {
     
     last_command = Serial.read();
 
-    //TODO
+    switch (last_command) {
+      case STOP:
+        stop = 1;
+        on = 0;
+        Stop();
+        break;
+      //TODO
+    }
   }
 }
 
