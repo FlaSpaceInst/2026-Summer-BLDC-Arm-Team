@@ -12,3 +12,19 @@
 #define MICROSTEP_MODE 32
 #define STEPS_PER_REV (200 * MICROSTEP_MODE)  // 200 = standard 1.8° stepper
 // =====================================================
+
+// ================= ARM SPEED CONFIG ==================
+
+// effectorSpd: speed (RPM) of opening/closing end effector
+#define EFFECTOR_SPD 40
+// effectorEase: speed (RPM) of easing the opening/closing of the end effector
+#define EFFECTOR_EASE 20
+// effectorTimeFull: time (ms) for effector to move at full speed when opening/closing
+#define EFFECTOR_TIME_FULL 750
+// effectorTimeEase: time (ms) for effector to move at eased speed when opening/closing
+#define EFFECTOR_TIME_EASE 250
+
+// armSpd: speed (RPM) of the arm shoulder & elbow
+#define ARM_SPD 20
+
+// =====================================================
