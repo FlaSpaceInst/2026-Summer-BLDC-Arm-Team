@@ -103,6 +103,7 @@ long timeEffectorStart = time - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;
 
 void setup() {
   // use USB on serial 115200
+  // I think this actually just activates the serial with a bitrate of 115200? - Lucas
   Serial.begin(115200);
 
 
