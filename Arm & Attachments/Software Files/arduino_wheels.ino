@@ -66,11 +66,12 @@ little wheel = 15 1/2
 #define Y_DIR_PIN 61
 #define Y_ENABLE_PIN 56
 
-// free driver (end effector)
-#define Z_STEP_PIN 40
-#define Z_DIR_PIN 41
-#define Z_ENABLE_PIN 42
+// free driver (arm base)
+#define Z_STEP_PIN 46
+#define Z_DIR_PIN 48
+#define Z_ENABLE_PIN 62
 
+/* Not how pins work
 // arm base
 #define A0_STEP_PIN 43
 #define A0_DIR_PIN 44
@@ -85,8 +86,10 @@ little wheel = 15 1/2
 #define A2_STEP_PIN 49
 #define A2_DIR_PIN 50
 #define A2_ENABLE_PIN 51
+*/
 
 // why are the left side wheels called "extruders"? - Lucas
+// apparently it's based on the arduino pin layout - Lucas, after some research
 // extruder 1 (back left wheel)
 #define E0_STEP_PIN 26
 #define E0_DIR_PIN 28
@@ -116,9 +119,10 @@ DRV8825 frontRight(Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, STEPS_PER_REV);
 DRV8825 frontLeft(E1_STEP_PIN, E1_DIR_PIN, E1_ENABLE_PIN, STEPS_PER_REV);
 DRV8825 backLeft(E0_STEP_PIN, E0_DIR_PIN, E0_ENABLE_PIN, STEPS_PER_REV);
 
-// Free driver (end effector): Z
-DRV8825 freeDriver(Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, STEPS_PER_REV);
+// Free driver (arm base): Z
+DRV8825 armBase(Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, STEPS_PER_REV);
 
+/*
 // arm base: A0
 DRV8825 armBase(A0_STEP_PIN, A0_DIR_PIN, A0_ENABLE_PIN, STEPS_PER_REV);
 
@@ -127,6 +131,7 @@ DRV8825 armShoulder(A1_STEP_PIN, A1_DIR_PIN, A1_ENABLE_PIN, STEPS_PER_REV);
 
 // arm elbow: A2
 DRV8825 armElbow(A2_STEP_PIN, A2_DIR_PIN, A2_ENABLE_PIN, STEPS_PER_REV);
+*/
 
 enum COMMANDS {
   STOP = 0x00, // stops wheels
@@ -175,8 +180,8 @@ long time = millis();
 long timeout = 0;
 long time1 = 0;
 
-// Set to current time to activate the end effector, or current time minus EFFECTOR_TIME_FULL and EFFECTOR_TIME_EASE to force stop
-long timeEffectorStart = time - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;
+/*// Set to current time to activate the end effector, or current time minus EFFECTOR_TIME_FULL and EFFECTOR_TIME_EASE to force stop
+long timeEffectorStart = time - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;*/
 
 // direction that indicates what side is going where
 bool rs = false;  // right side
@@ -223,23 +228,23 @@ void setup() {
   backLeft.set_direction(false);
   backLeft.set_speed(0);
 
-  // free driver (end effector) initial
+  /*// free driver (end effector) initial
   freeDriver.set_enabled(true);
   freeDriver.set_direction(false);
-  freeDriver.set_speed(0);
+  freeDriver.set_speed(0);*/
 
   // arm base/shoulder/elbow initial
   armBase.set_enabled(true);
   armBase.set_direction(false);
   armBase.set_speed(0);
 
-  armShoulder.set_enabled(true);
+  /*armShoulder.set_enabled(true);
   armShoulder.set_direction(false);
   armShoulder.set_speed(0);
 
   armElbow.set_enabled(true);
   armElbow.set_direction(false);
-  armElbow.set_speed(0);
+  armElbow.set_speed(0);*/
 }
 
 long last_frequency_check_time = 0;
@@ -253,7 +258,7 @@ void loop() {
 
   read_serial();
 
-  checkEffectorEasing();
+  //checkEffectorEasing();
 
   // Controlls the slow start for the stepper motor checks if a certain amount of miliseconds have passed and if we want to speed up
   if (time1 - time >= ACCEL_INTERVAL && on == 1) {
@@ -279,10 +284,10 @@ void update_motors() {
   frontLeft.update();
 
   // 2026 Team's Additions
-  freeDriver.update();
+  //freeDriver.update();
   armBase.update();
-  armShoulder.update();
-  armElbow.update();
+  //armShoulder.update();
+  //armElbow.update();
 }
 // getting hung up and sending stop when we dont want to stop
 // checks for commands being sent over the Serial port to the arduino/Ramps board
@@ -408,17 +413,17 @@ void read_serial() {
       
       // 2026 Team's Addition
       case OPEN_EFFECTOR:
-        freeDriver.set_direction(DIR_OPEN);
-        timeEffectorStart = time1;
+        /*freeDriver.set_direction(DIR_OPEN);
+        timeEffectorStart = time1;*/
         break;
 
       case CLOSE_EFFECTOR:
-        freeDriver.set_direction(!DIR_OPEN);
-        timeEffectorStart = time1;
+        /*freeDriver.set_direction(!DIR_OPEN);
+        timeEffectorStart = time1;*/
         break;
 
       case STOP_EFFECTOR:
-        timeEffectorStart = time1 - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;
+        //timeEffectorStart = time1 - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;
         break;
 
       case ARM_ROTATE_CW:
@@ -436,57 +441,57 @@ void read_serial() {
         break;
 
       case ARM_FWD_ELBOW:
-        armElbow.set_direction(true);
-        armElbow.set_speed(ARM_SPD);
+        /*armElbow.set_direction(true);
+        armElbow.set_speed(ARM_SPD);*/
         break;
       
       case ARM_REV_ELBOW:
-        armElbow.set_direction(false);
-        armElbow.set_speed(ARM_SPD);
+        /*armElbow.set_direction(false);
+        armElbow.set_speed(ARM_SPD);*/
         break;
       
       case ARM_STOP_ELBOW:
-        armElbow.set_speed(0);
+        //armElbow.set_speed(0);
         break;
       
       case ARM_FWD_SHOULDER:
-        armShoulder.set_direction(true);
-        armShoulder.set_speed(ARM_SPD);
+        /*armShoulder.set_direction(true);
+        armShoulder.set_speed(ARM_SPD);*/
         break;
       
       case ARM_REV_SHOULDER:
-        armShoulder.set_direction(false);
-        armShoulder.set_speed(ARM_SPD);
+        /*armShoulder.set_direction(false);
+        armShoulder.set_speed(ARM_SPD);*/
         break;
       
       case ARM_STOP_SHOULDER:
-        armShoulder.set_speed(0);
+        //armShoulder.set_speed(0);
         break;
 
       case ARM_FWD_BOTH:
-        armElbow.set_direction(true);
+        /*armElbow.set_direction(true);
         armElbow.set_speed(ARM_SPD);
         armShoulder.set_direction(true);
-        armShoulder.set_speed(ARM_SPD);
+        armShoulder.set_speed(ARM_SPD);*/
         break;
       
       case ARM_REV_BOTH:
-        armElbow.set_direction(false);
+        /*armElbow.set_direction(false);
         armElbow.set_speed(ARM_SPD);
         armShoulder.set_direction(false);
-        armShoulder.set_speed(ARM_SPD);
+        armShoulder.set_speed(ARM_SPD);*/
         break;
       
       case ARM_STOP_BOTH:
-        armElbow.set_speed(0);
-        armShoulder.set_speed(0);
+        /*armElbow.set_speed(0);
+        armShoulder.set_speed(0);*/
         break;
 
       case ARM_STOP_ALL:
         armBase.set_speed(0);
-        armShoulder.set_speed(0);
+        /*armShoulder.set_speed(0);
         armElbow.set_speed(0);
-        timeEffectorStart = time1 - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;
+        timeEffectorStart = time1 - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;*/
         break;
       
       default:
@@ -501,7 +506,7 @@ void read_serial() {
 
 // Adjust effector speed based on time since start of movement
 void checkEffectorEasing() {
-  if (freeDriver.get_enabled()) {
+  /*if (freeDriver.get_enabled()) {
     if (time1 - timeEffectorStart < EFFECTOR_TIME_FULL) {
       freeDriver.set_speed(EFFECTOR_SPD);
     } else if (time1 - timeEffectorStart < EFFECTOR_TIME_FULL + EFFECTOR_TIME_EASE) {
@@ -509,7 +514,7 @@ void checkEffectorEasing() {
     } else {
       freeDriver.set_speed(0);
     }
-  }
+  }*/
 }
 
 
