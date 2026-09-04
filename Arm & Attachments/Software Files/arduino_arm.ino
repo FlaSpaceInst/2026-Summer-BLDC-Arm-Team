@@ -43,3 +43,12 @@
 #define Z_STEP_PIN 46
 #define Z_DIR_PIN 48
 #define Z_ENABLE_PIN 62
+
+// arm shoulder: X
+DRV8825 armShoulder(X_STEP_PIN, X_DIR_PIN, X_ENABLE_PIN, STEPS_PER_REV);
+
+// arm elbow: Y
+DRV8825 armElbow(Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, STEPS_PER_REV);
+
+// end effector: Z
+DRV8825 endEffector(Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, STEPS_PER_REV);
