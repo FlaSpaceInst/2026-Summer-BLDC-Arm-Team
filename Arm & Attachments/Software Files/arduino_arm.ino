@@ -96,3 +96,13 @@ long time1 = 0;
 
 // Set to current time to activate the end effector, or current time minus EFFECTOR_TIME_FULL and EFFECTOR_TIME_EASE to force stop
 long timeEffectorStart = time - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;
+
+void setup() {
+  // use USB on serial 115200
+  Serial.begin(115200);
+
+
+  // set up the LED for ability to see if recieving commands
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, LOW);
+}
