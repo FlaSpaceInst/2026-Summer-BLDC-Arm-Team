@@ -28,3 +28,18 @@
 #define ARM_SPD 20
 
 // =====================================================
+
+// arm shoulder
+#define X_STEP_PIN 54
+#define X_DIR_PIN 55
+#define X_ENABLE_PIN 38
+
+// arm elbow
+#define Y_STEP_PIN 60
+#define Y_DIR_PIN 61
+#define Y_ENABLE_PIN 56
+
+// end effector
+#define Z_STEP_PIN 46
+#define Z_DIR_PIN 48
+#define Z_ENABLE_PIN 62
