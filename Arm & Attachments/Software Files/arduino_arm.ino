@@ -145,7 +145,20 @@ void read_serial() {
         on = 0;
         Stop();
         break;
-      //TODO
+      
+      case OPEN_EFFECTOR:
+        endEffector.set_direction(DIR_OPEN);
+        timeEffectorStart = time1;
+        break;
+
+      case CLOSE_EFFECTOR:
+        endEffector.set_direction(!DIR_OPEN);
+        timeEffectorStart = time1;
+        break;
+
+      case STOP_EFFECTOR:
+        timeEffectorStart = time1 - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;
+        break;
     }
   }
 }
