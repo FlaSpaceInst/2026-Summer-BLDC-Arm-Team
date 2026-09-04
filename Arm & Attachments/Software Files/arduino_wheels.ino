@@ -135,6 +135,7 @@ DRV8825 armShoulder(A1_STEP_PIN, A1_DIR_PIN, A1_ENABLE_PIN, STEPS_PER_REV);
 DRV8825 armElbow(A2_STEP_PIN, A2_DIR_PIN, A2_ENABLE_PIN, STEPS_PER_REV);
 */
 
+// Command hex ids
 enum COMMANDS {
   STOP = 0x00, // stops wheels
   FWD = 0x01, // drive forward
