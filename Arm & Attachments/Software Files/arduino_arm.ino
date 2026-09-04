@@ -127,7 +127,7 @@ void setup() {
 }
 
 // updates the motors
-void updateMotors() {
+void update_motors() {
   armShoulder.update();
   armElbow.update();
   endEffector.update();
