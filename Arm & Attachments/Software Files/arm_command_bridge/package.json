@@ -1,0 +1,15 @@
+{
+  "name": "ezrassor-arm-command-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "HTTP-to-serial bridge for the EZ-RASSOR three-motor arm.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "serialport": "^12.0.0"
+  }
+}
