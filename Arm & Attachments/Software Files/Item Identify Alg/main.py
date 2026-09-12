@@ -7,6 +7,8 @@ from opticalFlow import (
     selectTarget,
     trackTarget
 )
+from objDetect import detectObj
+import numpy as np
 import cv2
 
 def runCamera():
@@ -18,18 +20,31 @@ def runCamera():
 
     windowName = "Item Identification"
     selectedTarget = None
+    currentDetections = []
+    priorPoints = None
+    priorFrame = None
 
-    def select(event, x, y, flags, param):
+    def mouseCallback(event, x, y, flags, param):
         nonlocal selectedTarget
 
-        if event == cv2.EVENT_LBUTTONDOWN:
-            for targetOutline in currentTargets:
-                if cv2.pointPolygonTest(targetOutline, (x, y), False) >= 0:
-                    selectedTarget = targetOutline
-                    break
+        if event != cv2.EVENT_LBUTTONDOWN:
+            return
+
+        for detection in currentDetections:
+            x1, y1, x2, y2 = detection["box"]
+
+            if x1 <= x <= x2 and y1 <= y <= y2:
+                selectedTarget = detection
+                print( 
+                    f"Selected target: "
+                    f"{detection['label']} "
+                    f"({detection['confidence']:.2f})"
+                )
+                break
+
 
     cv2.namedWindow(windowName)
-    cv2.setMouseCallback(windowName, select)
+    cv2.setMouseCallback(windowName, mouseCallback)
     currentTargets = []
 
     while selectedTarget is None:
@@ -41,61 +56,25 @@ def runCamera():
             cv2.destroyAllWindows()
             return
 
-        currentTargets = getTargetEdges(frame)
+        curDetect = detectObj(frame)
         output = frame.copy()
-        for targetOutline in currentTargets:
-            cv2.drawContours( output, [targetOutline], -1, (0, 255, 0), 2)
+        for detected in curDetect:
+            x1, y1, x2, y2 = detected["box"]
+            label = detected["label"]
+            confidence = detected["confidence"]
+            cv2.rectangle(output, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            cv2.putText(output, f"{label} {confidence: .2f}", (x1, max(y1 - 10, 20)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+            cv2.putText(output, "Click an object to select target....", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+            cv2.imshow(windowName, output)
 
-        cv2.putText(output, "Click an outlined target to select", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-        cv2.imshow(windowName, output)
+            if cv2.waitKey(1) & 0xFF == 27:
+                camera.release()
+                cv2.destroyAllWindows
+                return
 
-        if cv2.waitKey(1) & 0xFF == 27:
-            camera.release()
-            cv2.destroyAllWindows()
-            return
+    print("Target selected.")   
 
-    target = selectedTarget
-    print("Target selected.")
-
-    priorPoints = getTargetPnts(frame, target)
-    if priorPoints is None:
-        print("Could not find trackable features.")
-        camera.release()
-        cv2.destroyAllWindows()
-        return
-
-    prevFrame = frame.copy()
-    while True:
-        success, frame = camera.read()
-
-        if not success:
-            print("Could not read frame.")
-            break
-
-        curPoints, status, error = trackTarget(prevFrame, frame,priorPoints)
-        averMove, validCurPnts = calcAverageMotion(priorPoints, curPoints, status, error)
-        output, pointCount = drawTracking( frame, priorPoints, curPoints, status, error, currentTargets, target)
-        output, points = calcOpticalFlow(prevFrame,frame)
-        cv2.putText(output, f"Tracked Features: {pointCount}", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-
-        if averMove is not None:
-            moveX = averMove[0]
-            moveY = averMove[1]
-
-            cv2.putText(output, f"Motion X: {moveX:.2f}", (20, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-            cv2.putText(output, f"Motion Y: {moveY:.2f}", (20, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-        else:
-            cv2.putText( output, "TRACKING LOST", (20, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-
-        cv2.imshow("Item Identification - Target Tracking", output)
-
-        prevFrame = frame.copy()
-
-        if curPoints is not None:
-            priorPoints = curPoints
-
-        if cv2.waitKey(1) & 0xFF == 27:
-            break
+    x1, y1, x2, y2 = selectedTarget["box"]        
 
     camera.release()
     cv2.destroyAllWindows()
