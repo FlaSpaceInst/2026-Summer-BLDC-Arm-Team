@@ -197,15 +197,20 @@ def trackTarget(prevFrame, curFrame, priorPoints):
     curGray = cv2.cvtColor(curFrame, cv2.COLOR_BGR2GRAY)
 
     curPoints, status, error = cv2.calcOpticalFlowPyrLK(prevGray, curGray, priorPoints, None, winSize = (10, 10), maxLevel = 5)
-    valid = ((status.flatten() == 1) & (error.flatten() <= 550))
+    if curPoints is None:
+        return None, None, None
+
+    reversePnts, reverseStatus, reverseError = cv2.calcOpticalFlowPyrLK(curGray, prevGray, curPoints, None, winSize = (10, 10), maxLevel = 5)
+    if reversePnts is None:
+            return None, None, None
+
+    forwardBackwardError = np.linalg.norm(priorPoints - reversePnts, axis = 2).flatten()
+    pointError = error.flatten()
+    valid = ((status.flatten() == 1) & (reverseStatus.flatten() == 1) & (pointError <= 550) & (forwardBackwardError <= 2.0))
     if curPoints is None or status is None or error is None or not np.any(valid):
         return None, None, None
 
-    filteredCurPoints = curPoints.copy()
-    filteredStatus = status.copy()
-    filteredError = error.copy()
-    filteredStatus[~valid] = 0
+    filteredStatus = np.zeros_like(status)
+    filteredStatus[valid.reshape(-1, 1)] = 1
 
-    return filteredCurPoints, filteredStatus, filteredError
-
-
+    return curPoints, filteredStatus, error

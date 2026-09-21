@@ -20,9 +20,8 @@ def runCamera():
 
     windowName = "Item Identification"
     selectedTarget = None
-    currentDetections = []
-    priorPoints = None
-    priorFrame = None
+    curDetect = []
+    
 
     def mouseCallback(event, x, y, flags, param):
         nonlocal selectedTarget
@@ -30,22 +29,33 @@ def runCamera():
         if event != cv2.EVENT_LBUTTONDOWN:
             return
 
-        for detection in currentDetections:
-            x1, y1, x2, y2 = detection["box"]
+        possibleTargets = []
+
+        for detect in curDetect:
+            x1, y1, x2, y2 = detect["box"]
 
             if x1 <= x <= x2 and y1 <= y <= y2:
-                selectedTarget = detection
-                print( 
-                    f"Selected target: "
-                    f"{detection['label']} "
-                    f"({detection['confidence']:.2f})"
+                selectedTarget = detect
+                area = (x2 - x1) * (y2 - y1)
+
+                possibleTargets.append(
+                    (area, detect)
                 )
-                break
+
+            if possibleTargets:
+                possibleTargets.sort(key=lambda target: target[0])
+
+                selectedTarget = possibleTargets[0][1]
+
+                print(
+                    f"Selected target: "
+                    f"{selectedTarget['label']} "
+                    f"({selectedTarget['confidence']:.2f})"
+                )
 
 
     cv2.namedWindow(windowName)
     cv2.setMouseCallback(windowName, mouseCallback)
-    currentTargets = []
 
     while selectedTarget is None:
         success, frame = camera.read()
@@ -74,7 +84,68 @@ def runCamera():
 
     print("Target selected.")   
 
-    x1, y1, x2, y2 = selectedTarget["box"]        
+    x1, y1, x2, y2 = selectedTarget["box"]  
+    print(f"X: {x1}")
+    print(f"Y: {y1}")
+    print(f"Width: {x2 - x1}")
+    print(f"Height: {y2 - y1}")
+
+    target = np.array([
+            [[x1, y1]],
+            [[x2, y1]],
+            [[x2, y2]],
+            [[x1, y2]]
+        ], dtype=np.int32
+    )
+
+    priorPoints = getTargetPnts(frame, target)
+    if priorPoints is None:
+        print("Could not find trackable features.")
+        camera.release()
+        cv2.destroyAllWindows()
+        return
+
+    prevFrame = frame.copy()
+
+    while True:
+        success, frame = camera.read()
+        if not success:
+            print("Could not read frame.")
+            break
+
+        curPoints, status, error = trackTarget(prevFrame, frame, priorPoints)
+        averMove, validCurPnts = calcAverageMotion(priorPoints, curPoints, status, error)
+        output, points = calcOpticalFlow(prevFrame, frame)
+        cv2.putText(output, f"Target: {selectedTarget['label']}", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+
+        output, pointCount = drawTracking(output, priorPoints, curPoints, status, error, None, target)
+        cv2.putText(output, f"Tracked Features: {pointCount}", (20, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+        cv2.putText(output, f"Target: {selectedTarget['label']}", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+        cv2.putText( output, f"Tracked Features: {pointCount}", (20, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+
+        if averMove is not None:
+            moveX = averMove[0]
+            moveY = averMove[1]
+            cv2.putText(output, f"Motion X: {moveX:.2f}", (20, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+            cv2.putText( output, f"Motion Y: {moveY:.2f}", (20, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+        else:
+            cv2.putText( output, "TRACKING LOST", (20, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+
+        cv2.imshow("Item Identification - Target Tracking", output)
+        prevFrame = frame.copy()
+
+        if curPoints is not None and status is not None:
+            validPoints = curPoints[status == 1]
+
+            if len(validPoints) > 0:
+                priorPoints = validPoints.reshape(-1, 1, 2)
+            else:
+                priorPoints = None
+                if curPoints is not None:
+                    priorPoints = curPoints
+
+        if cv2.waitKey(1) & 0xFF == 27:
+            break
 
     camera.release()
     cv2.destroyAllWindows()
