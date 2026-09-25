@@ -24,6 +24,9 @@
 // effectorTimeEase: time (ms) for effector to move at eased speed when opening/closing
 #define EFFECTOR_TIME_EASE 250
 
+// baseSpd: speed (RPM) of the arm base
+#define BASE_SPD 20
+
 // armSpd: speed (RPM) of the arm shoulder & elbow
 #define ARM_SPD 20
 
