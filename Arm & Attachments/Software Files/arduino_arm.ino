@@ -122,7 +122,11 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, LOW);
 
-  // arm shoulder/elbow initial
+  // arm base/shoulder/elbow initial
+  armBase.set_enabled(true);
+  armBase.set_direction(false);
+  armBase.set_speed(0);
+  
   armShoulder.set_enabled(true);
   armShoulder.set_direction(false);
   armShoulder.set_speed(0);
@@ -161,6 +165,7 @@ void loop() {
 
 // updates the motors
 void update_motors() {
+  armBase.update();
   armShoulder.update();
   armElbow.update();
   endEffector.update();
