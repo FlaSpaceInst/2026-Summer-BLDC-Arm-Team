@@ -47,14 +47,13 @@ little wheel = 15 1/2
 // effectorTimeFull: time (ms) for effector to move at full speed when opening/closing
 #define EFFECTOR_TIME_FULL 750
 // effectorTimeEase: time (ms) for effector to move at eased speed when opening/closing
-#define EFFECTOR_TIME_EASE 250*/
+#define EFFECTOR_TIME_EASE 250
 
 // baseSpd: speed (RPM) of the arm base
 #define BASE_SPD 20
 
 // armSpd: speed (RPM) of the arm shoulder & elbow
-// Removed, because a separate arduino is needed
-// #define ARM_SPD 20
+#define ARM_SPD 20 */
 
 // =====================================================
 
@@ -68,12 +67,12 @@ little wheel = 15 1/2
 #define Y_DIR_PIN 61
 #define Y_ENABLE_PIN 56
 
+/* Removed, because a separate arduino is needed
 // free driver (arm base)
 #define Z_STEP_PIN 46
 #define Z_DIR_PIN 48
 #define Z_ENABLE_PIN 62
 
-/* Removed, because a separate arduino is needed
 // arm base
 #define A0_STEP_PIN 43
 #define A0_DIR_PIN 44
@@ -102,10 +101,12 @@ little wheel = 15 1/2
 #define E1_DIR_PIN 34
 #define E1_ENABLE_PIN 30
 
+/* Removed, because a separate arduino is needed
 // switch if end effector is rotating the wrong way
 #define DIR_OPEN true
 // switch if base is rotating the wrong way
 #define DIR_CW false
+*/
 
 
 
@@ -121,10 +122,10 @@ DRV8825 frontRight(Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, STEPS_PER_REV);
 DRV8825 frontLeft(E1_STEP_PIN, E1_DIR_PIN, E1_ENABLE_PIN, STEPS_PER_REV);
 DRV8825 backLeft(E0_STEP_PIN, E0_DIR_PIN, E0_ENABLE_PIN, STEPS_PER_REV);
 
+/* Removed, because a separate arduino is needed
 // Free driver (arm base): Z
 DRV8825 armBase(Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, STEPS_PER_REV);
 
-/* Removed, because a separate arduino is needed
 // arm base: A0
 DRV8825 armBase(A0_STEP_PIN, A0_DIR_PIN, A0_ENABLE_PIN, STEPS_PER_REV);
 
@@ -236,14 +237,13 @@ void setup() {
   // free driver (end effector) initial
   freeDriver.set_enabled(true);
   freeDriver.set_direction(false);
-  freeDriver.set_speed(0);*/
+  freeDriver.set_speed(0);
 
   // arm base/shoulder/elbow initial
   armBase.set_enabled(true);
   armBase.set_direction(false);
   armBase.set_speed(0);
 
-  /* Removed, because a separate arduino is needed
   armShoulder.set_enabled(true);
   armShoulder.set_direction(false);
   armShoulder.set_speed(0);
@@ -292,7 +292,7 @@ void update_motors() {
 
   // 2026 Team's Additions
   //freeDriver.update();
-  armBase.update();
+  //armBase.update();
   //armShoulder.update();
   //armElbow.update();
 }
@@ -434,17 +434,17 @@ void read_serial() {
         break;
 
       case ARM_ROTATE_CW:
-        armBase.set_direction(DIR_CW);
-        armBase.set_speed(BASE_SPD);
+        /*armBase.set_direction(DIR_CW);
+        armBase.set_speed(BASE_SPD);*/
         break;
       
       case ARM_ROTATE_CCW:
-        armBase.set_direction(!DIR_CW);
-        armBase.set_speed(BASE_SPD);
+        /*armBase.set_direction(!DIR_CW);
+        armBase.set_speed(BASE_SPD);*/
         break;
 
       case ARM_STOP_ROTATE:
-        armBase.set_speed(0);
+        //armBase.set_speed(0);
         break;
 
       case ARM_FWD_ELBOW:
@@ -495,8 +495,8 @@ void read_serial() {
         break;
 
       case ARM_STOP_ALL:
-        armBase.set_speed(0);
-        /*armShoulder.set_speed(0);
+        /*armBase.set_speed(0);
+        armShoulder.set_speed(0);
         armElbow.set_speed(0);
         timeEffectorStart = time1 - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;*/
         break;
@@ -675,7 +675,7 @@ void Speedup(bool left, bool right) {
 
 // The stop function to be called to slowly stop the motors
 void Stop() {
-  armBase.set_speed(0);
+  //armBase.set_speed(0);
   if (abs(idle_left_speed) <= ACCEL_INCREMENT && abs(idle_right_speed) <= ACCEL_INCREMENT) {
     idle_left_speed = 1;
     idle_right_speed = 1;
