@@ -24,10 +24,18 @@
 // effectorTimeEase: time (ms) for effector to move at eased speed when opening/closing
 #define EFFECTOR_TIME_EASE 250
 
+// baseSpd: speed (RPM) of the arm base
+#define BASE_SPD 20
+
 // armSpd: speed (RPM) of the arm shoulder & elbow
 #define ARM_SPD 20
 
 // =====================================================
+
+// arm base
+#define E0_STEP_PIN 26
+#define E0_DIR_PIN 28
+#define E0_ENABLE_PIN 24
 
 // arm shoulder
 #define X_STEP_PIN 54
@@ -43,6 +51,14 @@
 #define Z_STEP_PIN 46
 #define Z_DIR_PIN 48
 #define Z_ENABLE_PIN 62
+
+// switch if end effector is rotating the wrong way
+#define DIR_OPEN true
+// switch if base is rotating the wrong way
+#define DIR_CW false
+
+// arm base: E0
+DRV8825 armBase(E0_STEP_PIN, E0_DIR_PIN, E0_ENABLE_PIN, STEPS_PER_REV);
 
 // arm shoulder: X
 DRV8825 armShoulder(X_STEP_PIN, X_DIR_PIN, X_ENABLE_PIN, STEPS_PER_REV);
@@ -111,7 +127,11 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, LOW);
 
-  // arm shoulder/elbow initial
+  // arm base/shoulder/elbow initial
+  armBase.set_enabled(true);
+  armBase.set_direction(false);
+  armBase.set_speed(0);
+  
   armShoulder.set_enabled(true);
   armShoulder.set_direction(false);
   armShoulder.set_speed(0);
@@ -150,6 +170,7 @@ void loop() {
 
 // updates the motors
 void update_motors() {
+  armBase.update();
   armShoulder.update();
   armElbow.update();
   endEffector.update();
@@ -180,6 +201,20 @@ void read_serial() {
 
       case STOP_EFFECTOR:
         timeEffectorStart = time1 - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;
+        break;
+
+      case ARM_ROTATE_CW:
+        armBase.set_direction(DIR_CW);
+        armBase.set_speed(BASE_SPD);
+        break;
+      
+      case ARM_ROTATE_CCW:
+        armBase.set_direction(!DIR_CW);
+        armBase.set_speed(BASE_SPD);
+        break;
+
+      case ARM_STOP_ROTATE:
+        armBase.set_speed(0);
         break;
 
       case ARM_FWD_ELBOW:
@@ -230,7 +265,7 @@ void read_serial() {
         break;
 
       case ARM_STOP_ALL:
-        //armBase.set_speed(0);
+        armBase.set_speed(0);
         armShoulder.set_speed(0);
         armElbow.set_speed(0);
         timeEffectorStart = time1 - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;
@@ -271,6 +306,7 @@ void checkEffectorEasing() {
 
 // The stop function to be called to slowly stop the motors
 void Stop() {
+  armBase.set_speed(0);
   armShoulder.set_speed(0);
   armElbow.set_speed(0);
 }
