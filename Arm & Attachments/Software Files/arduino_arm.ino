@@ -52,6 +52,9 @@
 #define Z_DIR_PIN 48
 #define Z_ENABLE_PIN 62
 
+// arm base: E0
+DRV8825 armBase(E0_STEP_PIN, E0_DIR_PIN, E0_ENABLE_PIN, STEPS_PER_REV);
+
 // arm shoulder: X
 DRV8825 armShoulder(X_STEP_PIN, X_DIR_PIN, X_ENABLE_PIN, STEPS_PER_REV);
 
