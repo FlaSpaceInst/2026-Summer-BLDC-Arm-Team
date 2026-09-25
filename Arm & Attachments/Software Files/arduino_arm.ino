@@ -32,6 +32,11 @@
 
 // =====================================================
 
+// arm base
+#define E0_STEP_PIN 26
+#define E0_DIR_PIN 28
+#define E0_ENABLE_PIN 24
+
 // arm shoulder
 #define X_STEP_PIN 54
 #define X_DIR_PIN 55
