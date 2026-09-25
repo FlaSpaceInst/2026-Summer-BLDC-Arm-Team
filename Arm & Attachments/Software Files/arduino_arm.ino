@@ -52,6 +52,11 @@
 #define Z_DIR_PIN 48
 #define Z_ENABLE_PIN 62
 
+// switch if end effector is rotating the wrong way
+#define DIR_OPEN true
+// switch if base is rotating the wrong way
+#define DIR_CW false
+
 // arm base: E0
 DRV8825 armBase(E0_STEP_PIN, E0_DIR_PIN, E0_ENABLE_PIN, STEPS_PER_REV);
 
