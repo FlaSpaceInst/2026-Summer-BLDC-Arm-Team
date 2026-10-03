@@ -441,17 +441,17 @@ void read_serial() {
         break;
 
       case ARM_ROTATE_CW:
-        /*armBase.set_direction(DIR_CW);
-        armBase.set_speed(BASE_SPD);*/
+        armBase.set_direction(DIR_CW);
+        armBase.set_speed(BASE_SPD);
         break;
       
       case ARM_ROTATE_CCW:
-        /*armBase.set_direction(!DIR_CW);
-        armBase.set_speed(BASE_SPD);*/
+        armBase.set_direction(!DIR_CW);
+        armBase.set_speed(BASE_SPD);
         break;
 
       case ARM_STOP_ROTATE:
-        //armBase.set_speed(0);
+        armBase.set_speed(0);
         break;
 
       case ARM_FWD_ELBOW:
@@ -502,8 +502,8 @@ void read_serial() {
         break;
 
       case ARM_STOP_ALL:
-        /*armBase.set_speed(0);
-        armShoulder.set_speed(0);
+        armBase.set_speed(0);
+        /*armShoulder.set_speed(0);
         armElbow.set_speed(0);
         timeEffectorStart = time1 - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;*/
         break;
@@ -682,7 +682,7 @@ void Speedup(bool left, bool right) {
 
 // The stop function to be called to slowly stop the motors
 void Stop() {
-  //armBase.set_speed(0);
+  armBase.set_speed(0);
   if (abs(idle_left_speed) <= ACCEL_INCREMENT && abs(idle_right_speed) <= ACCEL_INCREMENT) {
     idle_left_speed = 1;
     idle_right_speed = 1;
