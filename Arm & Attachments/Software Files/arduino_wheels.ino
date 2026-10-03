@@ -49,11 +49,11 @@ little wheel = 15 1/2
 // effectorTimeEase: time (ms) for effector to move at eased speed when opening/closing
 #define EFFECTOR_TIME_EASE 250
 
-// baseSpd: speed (RPM) of the arm base
-#define BASE_SPD 20
-
 // armSpd: speed (RPM) of the arm shoulder & elbow
 #define ARM_SPD 20 */
+
+// baseSpd: speed (RPM) of the arm base
+#define BASE_SPD 20
 
 // =====================================================
 
@@ -67,12 +67,12 @@ little wheel = 15 1/2
 #define Y_DIR_PIN 61
 #define Y_ENABLE_PIN 56
 
-/* Removed, because a separate arduino is needed
 // free driver (arm base)
 #define Z_STEP_PIN 46
 #define Z_DIR_PIN 48
 #define Z_ENABLE_PIN 62
 
+/* Removed, because a separate arduino is needed
 // arm base
 #define A0_STEP_PIN 43
 #define A0_DIR_PIN 44
@@ -104,9 +104,11 @@ little wheel = 15 1/2
 /* Removed, because a separate arduino is needed
 // switch if end effector is rotating the wrong way
 #define DIR_OPEN true
+*/
+
 // switch if base is rotating the wrong way
 #define DIR_CW false
-*/
+
 
 
 
@@ -122,10 +124,10 @@ DRV8825 frontRight(Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, STEPS_PER_REV);
 DRV8825 frontLeft(E1_STEP_PIN, E1_DIR_PIN, E1_ENABLE_PIN, STEPS_PER_REV);
 DRV8825 backLeft(E0_STEP_PIN, E0_DIR_PIN, E0_ENABLE_PIN, STEPS_PER_REV);
 
-/* Removed, because a separate arduino is needed
 // Free driver (arm base): Z
 DRV8825 armBase(Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, STEPS_PER_REV);
 
+/* Removed, because a separate arduino is needed
 // arm base: A0
 DRV8825 armBase(A0_STEP_PIN, A0_DIR_PIN, A0_ENABLE_PIN, STEPS_PER_REV);
 
@@ -233,6 +235,11 @@ void setup() {
   backLeft.set_direction(false);
   backLeft.set_speed(0);
 
+  // arm base initial
+  armBase.set_enabled(true);
+  armBase.set_direction(false);
+  armBase.set_speed(0);
+
   /* Removed, because a separate arduino is needed
   // free driver (end effector) initial
   freeDriver.set_enabled(true);
@@ -291,10 +298,10 @@ void update_motors() {
   frontLeft.update();
 
   // 2026 Team's Additions
-  //freeDriver.update();
-  //armBase.update();
+  armBase.update();
   //armShoulder.update();
   //armElbow.update();
+  //freeDriver.update();
 }
 // getting hung up and sending stop when we dont want to stop
 // checks for commands being sent over the Serial port to the arduino/Ramps board
@@ -316,7 +323,7 @@ void read_serial() {
     //   last_command = LEFT;
     // if (command == "STOP")
     //   last_command = STOP;
-
+    
     switch (last_command) {
       case STOP:
         stop = 1;
