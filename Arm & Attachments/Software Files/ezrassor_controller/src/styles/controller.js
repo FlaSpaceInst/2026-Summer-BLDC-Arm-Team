@@ -1,5 +1,4 @@
-import { NativeStackView } from '@react-navigation/native-stack';
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { normalize } from '../functionality/display';
 
 const ControllerStyle = StyleSheet.create({
@@ -114,12 +113,13 @@ const ControllerStyle = StyleSheet.create({
 
   screenLayout: {
     width: '100%',
-    height: '100%',
+    flex: 1,
+    minHeight: '100%',
     backgroundColor: '#2E3030',
     justifyContent: 'center', //Centered vertically
     alignItems: 'center',
     flexDirection: 'column',
-    overflow: 'hidden'
+    overflow: 'visible'
   },
 
   title: {
@@ -172,6 +172,31 @@ const ControllerStyle = StyleSheet.create({
     flexDirection: 'column',
   },
 
+  connectionBody: {
+    width: '100%',
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    position: 'relative',
+  },
+
+  connectionCard: {
+    width: '60%',
+    height: undefined,
+    minHeight: 0,
+    marginVertical: 0,
+    paddingVertical: 18,
+    backgroundColor: '#3a3d3d',
+    borderWidth: 1,
+    borderColor: '#646a6a',
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+
 
   connectButton: {
     flexDirection: 'row',
@@ -183,12 +208,184 @@ const ControllerStyle = StyleSheet.create({
     borderRadius: 8,
     textAlign: 'center',
     textAlignVertical: 'center',
-    // height: '20%',
     height: (2 * normalize(45, 1.5)),
     lineHeight: (2 * normalize(45, 1.8)),
     width: '30%',
-    marginTop: 5,
+    marginTop: 0,
     marginBottom: 15
+  },
+
+  primaryConnectButton: {
+    width: '42%',
+    backgroundColor: '#fff',
+    margin: 0,
+    height: 64,
+  },
+
+  connectionActionRow: {
+    width: '62%',
+    height: 64,
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    justifyContent: 'space-between',
+    columnGap: 0,
+    marginTop: 2,
+    marginBottom: 8,
+  },
+
+  offlinePreviewButton: {
+    width: '54%',
+    height: 64,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+
+  offlinePreviewButtonText: {
+    color: '#202323',
+    fontFamily: 'NASA',
+    fontSize: 18,
+    lineHeight: 21,
+    textAlign: 'center',
+  },
+
+  connectionConnectText: {
+    fontSize: 20,
+    lineHeight: 30,
+  },
+
+  findRoverButton: {
+    width: '44%',
+    minHeight: 36,
+    borderWidth: 2,
+    borderColor: '#fff',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+
+  findRoverButtonDisabled: {
+    opacity: 0.55,
+  },
+
+  findRoverButtonText: {
+    color: '#fff',
+    fontFamily: 'NASA',
+    fontSize: 22,
+  },
+
+  discoveryMessage: {
+    minHeight: 22,
+    width: '80%',
+    marginVertical: 2,
+    color: '#d7dddd',
+    textAlign: 'center',
+    fontFamily: 'NASA',
+    fontSize: normalize(17, 1.2),
+  },
+
+  connectionIpInput: {
+    height: normalize(58, 1.2),
+    marginVertical: 5,
+  },
+
+  connectionFsiLogo: {
+    position: 'absolute',
+    left: 20,
+    bottom: 16,
+    width: 128,
+    height: 72,
+    alignSelf: 'auto',
+    right: undefined,
+    resizeMode: 'contain',
+    overflow: 'visible',
+  },
+
+  connectionHelpButton: {
+    position: 'absolute',
+    right: 20,
+    bottom: 16,
+    left: undefined,
+    width: 132,
+    height: 52,
+    alignSelf: 'auto',
+  },
+
+  connectionHelpButtonText: {
+    fontSize: 28,
+    lineHeight: 32,
+  },
+
+  discoveryModalBackdrop: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.68)',
+    padding: 24,
+  },
+
+  discoveryModalCard: {
+    width: '72%',
+    maxWidth: 720,
+    borderRadius: 14,
+    backgroundColor: '#5d6061',
+    padding: 24,
+  },
+
+  discoveryModalTitle: {
+    fontFamily: 'NASA',
+    fontSize: normalize(30, 1),
+    color: '#fff',
+    marginBottom: 16,
+  },
+
+  discoveredRoverRow: {
+    minHeight: 54,
+    borderRadius: 6,
+    backgroundColor: '#3f4142',
+    marginBottom: 10,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+
+  discoveredRoverText: {
+    fontFamily: 'NASA',
+    fontSize: normalize(19, 1),
+    color: '#fff',
+  },
+
+  discoveredRoverUseText: {
+    fontFamily: 'NASA',
+    fontSize: normalize(18, 1),
+    color: '#fff',
+  },
+
+  noRoversText: {
+    fontFamily: 'NASA',
+    fontSize: normalize(18, 1),
+    lineHeight: normalize(25, 1),
+    color: '#fff',
+    marginBottom: 18,
+  },
+
+  discoveryModalCloseButton: {
+    minHeight: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 6,
+    backgroundColor: '#3f4142',
+    marginTop: 4,
+  },
+
+  discoveryModalCloseText: {
+    fontFamily: 'NASA',
+    fontSize: normalize(19, 1),
+    color: '#fff',
   },
 
   statusButton: {
