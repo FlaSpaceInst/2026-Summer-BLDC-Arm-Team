@@ -9,7 +9,7 @@ enum COMMANDS {
   REV = 0x02, // drive backwards
   LEFT = 0x03, // turn left
   RIGHT = 0x04, // turn right
-  HALT = 0xff, // deprecated
+  //HALT = 0xff, // deprecated
   FRONT = 0x05, // seems unused, probably related to drums
   BACK = 0x06, // seems unused, probably related to drums
   RAISE = 0X07, // seems unused, probably related to drums
