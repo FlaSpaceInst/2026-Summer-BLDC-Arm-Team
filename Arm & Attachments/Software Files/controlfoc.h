@@ -17,18 +17,4 @@ float radstoRPM(float rads);
 float RPMtoRads(float rpm);
 int clamp(int input, int min, int max);
 
-// Serial command bytes received from the Raspberry Pi
-enum COMMANDS {
-  ROVER_STOP  = 0x00,  // all stop
-  ROVER_FWD   = 0x01,  // increment speed forward
-  ROVER_REV   = 0x02,  // increment speed reverse
-  ROVER_LEFT  = 0x03,  // left bank back, right bank forward (pivot left)
-  ROVER_RIGHT = 0x04,  // left bank forward, right bank back (pivot right)
-  //ROVER_HALT = 0xff,  // deprecated
-  ROVER_FRONT = 0x05,
-  ROVER_BACK  = 0x06,
-  ROVER_RAISE = 0X07,
-  ROVER_LOWER = 0X08
-};
-
 #endif // CONTROLFOC_H
