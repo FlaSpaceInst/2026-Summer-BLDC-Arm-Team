@@ -43,8 +43,9 @@ float v_curr_effector = 0.0;
 float v_curr_shoulder = 0.0;
 float v_curr_elbow = 0.0;
 
-// global checker for stopping
+// global checkers for stopping and halted
 int stop = 0;
+int halt = 0;
 
 byte last_command = STOP;
 
@@ -112,8 +113,12 @@ void loop() {
     accel_change = min((time1-time) * ACCEL_RATE, MAX_ACCEL);
     
     // Check serial commands every some number of loops
-    if (i % LOOP_INPUT_CYCLE = 0) {
+    if (halt==0 && i % LOOP_INPUT_CYCLE = 0) {
       read_serial();
+      // call stop function if stopping
+      if (stop == 1) {
+        Stop();
+      }
     }
 
     // Update motors
@@ -125,11 +130,6 @@ void loop() {
   // Check easing
   checkEffectorEasing();
   // If shoulder/elbow easing is added it should be here
-
-  // call stop function if stopping
-  if (stop == 1) {
-    Stop();
-  }
   
   /*// call stop function if we get stuck in a loop and it wont slow down after 2500 miliseconds
   if (timeout == 750) {
@@ -181,7 +181,6 @@ void read_serial() {
     switch (last_command) {
       case STOP:
         stop = 1;
-        Stop();
         break;
       
       case OPEN_EFFECTOR:
@@ -243,6 +242,15 @@ void read_serial() {
         v_target_shoulder = 0.0;
         v_target_effector = 0.0;
         break;
+      case HALT:
+        halt = 1;
+        v_target_elbow = 0.0;
+        v_target_shoulder = 0.0;
+        v_target_effector = 0.0;
+        v_curr_elbow = 0.0;
+        v_curr_shoulder = 0.0;
+        v_curr_effector = 0.0;
+        break;
 
       // All of these are handled fully by the other arduino
       case FWD:
@@ -257,7 +265,6 @@ void read_serial() {
       default:
         //digitalWrite(LED_BUILTIN, LOW);
         stop = 1;
-        Stop();
         break;
     }
   }
@@ -291,4 +298,7 @@ void Stop() {
   v_target_effector = 0.0;
   v_target_shoulder = 0.0;
   v_target_elbow = 0.0;
+  if (v_curr_effector == 0.0 && v_curr_shoulder == 0.0 && v_curr_elbow == 0.0) {
+    stop = 0;
+  }
 }
