@@ -69,11 +69,13 @@ void loop() {
       read_serial();
     }
 
-    // Cheack easing and update motors
-    checkEffectorEasing();
-    // If shoulder/elbow easing is added it should be here
+    // Update motors
     update_motors();
   }
+
+  // Check easing
+  checkEffectorEasing();
+  // If shoulder/elbow easing is added it should be here
 
   // call stop function if stopping
   if (stop == 1) {
