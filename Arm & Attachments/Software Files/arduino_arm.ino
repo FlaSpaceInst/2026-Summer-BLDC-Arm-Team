@@ -19,12 +19,6 @@
 #define INV_SHOULDER false
 #define INV_ELBOW false
 
-//TODO: keep updating from here
-
-// global checkers for starting or stopping
-int on = 0;
-int stop = 0;
-
 byte last_command = STOP;
 
 long last_command_time = 0;   // ms since last command
@@ -34,15 +28,13 @@ long time = millis();
 long timeout = 0;
 long time1 = 0;
 
-// Set to current time to activate the end effector, or current time minus EFFECTOR_TIME_FULL and EFFECTOR_TIME_EASE to force stop
-long timeEffectorStart = time - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;
-
 void setup() {
   // use USB on serial 115200
   // I think this actually just activates the serial with a bitrate of 115200? - Lucas
   Serial.begin(115200);
 
-
+  //TODO: keep updating from here
+  
   // set up the LED for ability to see if recieving commands
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, LOW);
