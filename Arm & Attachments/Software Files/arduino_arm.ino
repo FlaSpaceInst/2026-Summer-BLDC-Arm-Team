@@ -75,7 +75,6 @@ void loop() {
   }
   
   // call stop function if we get stuck in a loop and it wont slow down after 2500 miliseconds
-  // I don't think this actually works as is, but some future team can fix it - Lucas
   if (timeout == 750) {
     stop = 1;
     Stop();
