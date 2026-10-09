@@ -19,6 +19,8 @@
 #define INV_SHOULDER false
 #define INV_ELBOW false
 
+//TODO: motor and driver definitions
+
 byte last_command = STOP;
 
 long last_command_time = 0;   // ms since last command
@@ -32,32 +34,18 @@ void setup() {
   // use USB on serial 115200
   // I think this actually just activates the serial with a bitrate of 115200? - Lucas
   Serial.begin(115200);
-
-  //TODO: keep updating from here
   
-  // set up the LED for ability to see if recieving commands
+  /*// set up the LED for ability to see if recieving commands
   pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, LOW);
+  digitalWrite(LED_BUILTIN, LOW);*/
 
-  // arm base/shoulder/elbow initial
-  armBase.set_enabled(true);
-  armBase.set_direction(false);
-  armBase.set_speed(0);
-  
-  armShoulder.set_enabled(true);
-  armShoulder.set_direction(false);
-  armShoulder.set_speed(0);
-
-  armElbow.set_enabled(true);
-  armElbow.set_direction(false);
-  armElbow.set_speed(0);
+  // arm shoulder/eblow initial
+  //TODO
 
   // end effector initial
-  endEffector.set_enabled(true);
-  endEffector.set_direction(false);
-  endEffector.set_speed(0);
+  //TODO
 }
-
+//TODO: keep updating from here
 void loop() {
 
   time1 = millis();
