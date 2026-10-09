@@ -162,9 +162,10 @@ long timeEffectorStart = time - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;*/
 bool rs = false;  // right side
 bool ls = false;  // left side
 
-// global checkers for starting or stopping
+// global checkers for starting, stopping, and halting
 int on = 0;
 int stop = 0;
+int halt = 0;
 
 // variable to control slow stop/accelerate (uses define from top)
 int slowSpeed = ACCEL_INCREMENT;
@@ -230,14 +231,13 @@ void setup() {
 }
 
 // seemingly unused variables
-long last_frequency_check_time = 0;
-long counter = 0;
+//long last_frequency_check_time = 0;
+//long counter = 0;
 
 
 void loop() {
 
   time1 = millis();
-  update_motors();
 
   read_serial();
 
@@ -259,6 +259,8 @@ void loop() {
     on = 0;
     Stop();
   }*/
+
+  update_motors();
 }
 // updates the motors
 void update_motors() {
@@ -299,7 +301,6 @@ void read_serial() {
       case STOP:
         stop = 1;
         on = 0;
-        Stop();
         break;
 
       case FWD:
@@ -480,7 +481,7 @@ void read_serial() {
         break;
 
       case HALT:
-        stop = 1;
+        halt = 1;
         on = 0;
         frontLeft.set_speed(0);
         frontRight.set_speed(0);
@@ -496,7 +497,6 @@ void read_serial() {
         digitalWrite(LED_BUILTIN, LOW);
         stop = 1;
         on = 0;
-        Stop();
         break;
     }
   }
