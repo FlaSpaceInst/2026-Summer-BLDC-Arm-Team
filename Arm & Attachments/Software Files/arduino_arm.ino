@@ -20,7 +20,15 @@
 #define INV_SHOULDER false
 #define INV_ELBOW false
 
-//TODO: motor and driver definitions
+// motor and driver definitions
+// the first 3 numbers of the driver definitions are the PWM pins those motors should be connected to
+// the fourth is NOT_SET because we aren't using enable pins for the BLDCs
+BLDCMotor motor_effector(POLE_PAIRS);
+BLDCDriver3PWM driver_effector(10, 9, 8, NOT_SET);
+BLDCMotor motor_shoulder(POLE_PAIRS);
+BLDCDriver3PWM driver_shoulder(7, 6, 5, NOT_SET);
+BLDCMotor motor_elbow(POLE_PAIRS);
+BLDCDriver3PWM driver_elbow(4, 3, 2, NOT_SET);
 
 // global checker for stopping
 int stop = 0;
