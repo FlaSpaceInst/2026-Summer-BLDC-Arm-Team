@@ -9,7 +9,8 @@
 #define SUPPLY_VOLTAGE 12.0          // volts
 #define DRIVER_VOLTAGE_LIMIT 8       // volts
 #define LOOP_DUTY_CYCLE 1000         // FOC loop iterations per main loop pass (controls CPU split between FOC and I/O)
-#define LOOP_INPUT_CYCLE 10             // FOC loop iterations per serial read
+#define LOOP_INPUT_CYCLE 10          // FOC loop iterations per serial read
+#define ACCEL_RATE 0.1               // RPM per ms acceleration/deceleration rate
 
 // function prototypes
 float radstoRPM(float rads);
