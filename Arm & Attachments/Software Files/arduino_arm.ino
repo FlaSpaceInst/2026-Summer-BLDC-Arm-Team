@@ -15,10 +15,10 @@
 
 // =====================================================
 
-// switch if any motors are rotating the wrong way
-#define INV_EFFECTOR false
-#define INV_SHOULDER false
-#define INV_ELBOW false
+// switch between -1 and 1 if motors are rotating the wrong way
+#define DIR_EFFECTOR 1
+#define DIR_SHOULDER 1
+#define DIR_ELBOW 1
 
 // motor and driver definitions
 // the first 3 numbers of the driver definitions are the PWM pins those motors should be connected to
@@ -69,7 +69,7 @@ void setup() {
   driver_effector.init();
   
   motor_effector.linkDriver(&driver_effector);
-  motor_effector.controller = MotionControlType::velocity_openloop;
+  motor_effector.controller = MotionControlType::velocity_openloop; // Note: considering MotionControlType::angle_openloop as alternative for end effector specifically
   motor_effector.voltage_limit = SUPPLY_VOLTAGE;
   motor_effector.init();
   motor_effector.enable();
@@ -160,11 +160,11 @@ void update_motors() {
   
   // move motors
   motor_effector.loopFOC();
-  motor_effector.move(v_curr_effector);
+  motor_effector.move(DIR_EFFECTOR * v_curr_effector);
   motor_shoulder.loopFOC();
-  motor_shoulder.move(v_curr_shoulder);
+  motor_shoulder.move(DIR_SHOULDER * v_curr_shoulder);
   motor_elbow.loopFOC();
-  motor_elbow.move(v_curr_elbow);
+  motor_elbow.move(DIR_ELBOW * v_curr_elbow);
 }
 
 // checks for commands being sent over the Serial port to the arduino/Ramps board
