@@ -478,6 +478,19 @@ void read_serial() {
         armElbow.set_speed(0);
         timeEffectorStart = time1 - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;*/
         break;
+
+      case HALT:
+        stop = 1;
+        on = 0;
+        frontLeft.set_speed(0);
+        frontRight.set_speed(0);
+        backLeft.set_speed(0);
+        backRight.set_speed(0);
+        armBase.set_speed(0);
+        leftSpeed = 0;
+        rightSpeed = 0;
+        Stop();
+        break;
       
       default:
         digitalWrite(LED_BUILTIN, LOW);
