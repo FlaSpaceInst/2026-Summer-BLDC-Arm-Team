@@ -243,6 +243,14 @@ void read_serial() {
         v_target_shoulder = 0.0;
         v_target_effector = 0.0;
         break;
+      case HALT:
+        v_target_elbow = 0.0;
+        v_target_shoulder = 0.0;
+        v_target_effector = 0.0;
+        v_curr_elbow = 0.0;
+        v_curr_shoulder = 0.0;
+        v_curr_effector = 0.0;
+        break;
 
       // All of these are handled fully by the other arduino
       case FWD:
