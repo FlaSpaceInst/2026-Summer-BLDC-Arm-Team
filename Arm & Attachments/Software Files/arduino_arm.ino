@@ -48,11 +48,11 @@ int stop = 0;
 
 byte last_command = STOP;
 
-long last_command_time = 0;   // ms since last command
-long command_timeout = 1000;  // ms to wait for next command before stopping
+//long last_command_time = 0;   // ms since last command
+//long command_timeout = 1000;  // ms to wait for next command before stopping
 
 long time = millis();
-long timeout = 0;
+//long timeout = 0;
 long time1 = millis();
 float accel_change = 0.0;
 
@@ -131,11 +131,11 @@ void loop() {
     Stop();
   }
   
-  // call stop function if we get stuck in a loop and it wont slow down after 2500 miliseconds
+  /*// call stop function if we get stuck in a loop and it wont slow down after 2500 miliseconds
   if (timeout == 750) {
     stop = 1;
     Stop();
-  }
+  }*/
 }
 
 // updates the motors
