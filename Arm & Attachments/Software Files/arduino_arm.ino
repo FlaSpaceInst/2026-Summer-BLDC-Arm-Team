@@ -22,6 +22,9 @@
 
 //TODO: motor and driver definitions
 
+// global checker for stopping
+int stop = 0;
+
 byte last_command = STOP;
 
 long last_command_time = 0;   // ms since last command
@@ -46,10 +49,11 @@ void setup() {
   // end effector initial
   //TODO
 }
-//TODO: keep updating from here
+
 void loop() {
 
   time1 = millis();
+  //TODO: continue updating from here
   update_motors();
 
   read_serial();
@@ -64,7 +68,6 @@ void loop() {
   // call stop function if we get stuck in a loop and it wont slow down after 2500 miliseconds
   if (timeout == 750) {
     stop = 1;
-    on = 0;
     Stop();
   }
 }
