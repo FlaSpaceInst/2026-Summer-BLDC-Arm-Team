@@ -74,7 +74,7 @@ void loop() {
   // FOC loop
   for(int i = 0; i < LOOP_DUTY_CYCLE; i++) {
     time1 = millis();
-    accel_change = (time1-time) * ACCEL_RATE;
+    accel_change = min((time1-time) * ACCEL_RATE, MAX_ACCEL);
     
     // Check serial commands every some number of loops
     if (i % LOOP_INPUT_CYCLE = 0) {
