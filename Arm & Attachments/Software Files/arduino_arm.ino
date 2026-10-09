@@ -30,6 +30,16 @@ BLDCDriver3PWM driver_shoulder(7, 6, 5, NOT_SET);
 BLDCMotor motor_elbow(POLE_PAIRS);
 BLDCDriver3PWM driver_elbow(4, 3, 2, NOT_SET);
 
+// target velocities (RPM)
+float v_target_effector = 0.0;
+float v_target_shoulder = 0.0;
+float v_target_elbow = 0.0;
+
+// current velocities (RPM)
+float v_curr_effector = 0.0;
+float v_curr_shoulder = 0.0;
+float v_curr_elbow = 0.0;
+
 // global checker for stopping
 int stop = 0;
 
