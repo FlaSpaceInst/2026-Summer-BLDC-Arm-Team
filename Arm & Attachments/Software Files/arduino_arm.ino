@@ -103,20 +103,6 @@ void read_serial() {
         timeEffectorStart = time1 - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;
         break;
 
-      case ARM_ROTATE_CW:
-        armBase.set_direction(DIR_CW);
-        armBase.set_speed(BASE_SPD);
-        break;
-      
-      case ARM_ROTATE_CCW:
-        armBase.set_direction(!DIR_CW);
-        armBase.set_speed(BASE_SPD);
-        break;
-
-      case ARM_STOP_ROTATE:
-        armBase.set_speed(0);
-        break;
-
       case ARM_FWD_ELBOW:
         armElbow.set_direction(true);
         armElbow.set_speed(ARM_SPD);
