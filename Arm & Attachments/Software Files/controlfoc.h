@@ -11,6 +11,7 @@
 #define LOOP_DUTY_CYCLE 1000         // FOC loop iterations per main loop pass (controls CPU split between FOC and I/O)
 #define LOOP_INPUT_CYCLE 10          // FOC loop iterations per serial read
 #define ACCEL_RATE 0.1               // RPM per ms acceleration/deceleration rate
+#define MAX_ACCEL 0.5                // max RPM change per FOC loop
 
 // function prototypes
 float radstoRPM(float rads);
