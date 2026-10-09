@@ -190,59 +190,51 @@ void read_serial() {
       case STOP_EFFECTOR:
         v_target_effector = 0.0;
         break;
-      //TODO: continue updating from here
+      
       case ARM_FWD_ELBOW:
-        armElbow.set_direction(true);
-        armElbow.set_speed(ARM_SPD);
+        v_target_elbow = ARM_SPD;
         break;
       
       case ARM_REV_ELBOW:
-        armElbow.set_direction(false);
-        armElbow.set_speed(ARM_SPD);
+        v_target_elbow = -ARM_SPD;
         break;
       
       case ARM_STOP_ELBOW:
-        armElbow.set_speed(0);
+        v_target_elbow = 0.0;
         break;
       
       case ARM_FWD_SHOULDER:
-        armShoulder.set_direction(true);
-        armShoulder.set_speed(ARM_SPD);
+        v_target_shoulder = ARM_SPD;
         break;
       
       case ARM_REV_SHOULDER:
-        armShoulder.set_direction(false);
-        armShoulder.set_speed(ARM_SPD);
+        v_target_shoulder = -ARM_SPD;
         break;
       
       case ARM_STOP_SHOULDER:
-        armShoulder.set_speed(0);
+        v_target_shoulder = 0.0;
         break;
 
       case ARM_FWD_BOTH:
-        armElbow.set_direction(true);
-        armElbow.set_speed(ARM_SPD);
-        armShoulder.set_direction(true);
-        armShoulder.set_speed(ARM_SPD);
+        v_target_elbow = ARM_SPD;
+        v_target_shoulder = ARM_SPD;
         break;
       
       case ARM_REV_BOTH:
-        armElbow.set_direction(false);
-        armElbow.set_speed(ARM_SPD);
-        armShoulder.set_direction(false);
-        armShoulder.set_speed(ARM_SPD);
+        v_target_elbow = -ARM_SPD;
+        v_target_shoulder = -ARM_SPD;
         break;
       
       case ARM_STOP_BOTH:
-        armElbow.set_speed(0);
-        armShoulder.set_speed(0);
+        v_target_elbow = 0.0;
+        v_target_shoulder = 0.0;
         break;
 
       case ARM_STOP_ALL:
         //armBase.set_speed(0);
-        armShoulder.set_speed(0);
-        armElbow.set_speed(0);
-        timeEffectorStart = time1 - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;
+        v_target_elbow = 0.0;
+        v_target_shoulder = 0.0;
+        v_target_effector = 0.0;
         break;
 
       // All of these are handled fully by the other arduino
@@ -266,6 +258,7 @@ void read_serial() {
 
 // Adjust effector speed based on time since start of movement
 void checkEffectorEasing() {
+  //TODO: continue updating from here
   if (endEffector.get_enabled()) {
     if (time1 - timeEffectorStart < EFFECTOR_TIME_FULL) {
       endEffector.set_speed(EFFECTOR_SPD);
