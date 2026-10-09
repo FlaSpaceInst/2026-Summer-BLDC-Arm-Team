@@ -51,6 +51,7 @@ long command_timeout = 1000;  // ms to wait for next command before stopping
 long time = millis();
 long timeout = 0;
 long time1 = millis();
+float accel_change = 0.0;
 
 void setup() {
   // use USB on serial 115200
@@ -73,6 +74,7 @@ void loop() {
   // FOC loop
   for(int i = 0; i < LOOP_DUTY_CYCLE; i++) {
     time1 = millis();
+    accel_change = (time1-time) * ACCEL_RATE;
     
     // Check serial commands every some number of loops
     if (i % LOOP_INPUT_CYCLE = 0) {
@@ -103,7 +105,36 @@ void loop() {
 
 // updates the motors
 void update_motors() {
-  //TODO: whatever is needed here
+  // change speeds
+  // change end effector speed
+  if (v_target_effector<v_curr_effector) {
+    v_curr_effector = max(v_target_effector, v_curr_effector - accel_change);
+  }
+  else if (v_target_effector>v_curr_effector) {
+    v_curr_effector = min(v_target_effector, v_curr_effector + accel_change);
+  }
+  // change shoulder speed
+  if (v_target_shoulder<v_curr_shoulder) {
+    v_curr_shoulder = max(v_target_shoulder, v_curr_shoulder - accel_change);
+  }
+  else if (v_target_shoulder>v_curr_shoulder) {
+    v_curr_shoulder = min(v_target_shoulder, v_curr_shoulder + accel_change);
+  }
+  // change elbow speed
+  if (v_target_elbow<v_curr_elbow) {
+    v_curr_elbow = max(v_target_elbow, v_curr_elbow - accel_change);
+  }
+  else if (v_target_elbow>v_curr_elbow) {
+    v_curr_elbow = min(v_target_elbow, v_curr_elbow + accel_change);
+  }
+  
+  // move motors
+  motor_effector.loopFOC();
+  motor_effector.move(v_curr_effector);
+  motor_shoulder.loopFOC();
+  motor_shoulder.move(v_curr_shoulder);
+  motor_elbow.loopFOC();
+  motor_elbow.move(v_curr_elbow);
 }
 
 // checks for commands being sent over the Serial port to the arduino/Ramps board
