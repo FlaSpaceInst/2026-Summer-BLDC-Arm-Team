@@ -75,6 +75,7 @@ void loop() {
   }
   
   // call stop function if we get stuck in a loop and it wont slow down after 2500 miliseconds
+  // I don't think this actually works as is, but some future team can fix it - Lucas
   if (timeout == 750) {
     stop = 1;
     Stop();
@@ -198,9 +199,8 @@ void checkEffectorEasing() {
   }
 }
 
-// The stop function to be called to slowly stop the motors
+// The stop function to be called to stop the motors
 void Stop() {
-  armBase.set_speed(0);
   armShoulder.set_speed(0);
   armElbow.set_speed(0);
 }
