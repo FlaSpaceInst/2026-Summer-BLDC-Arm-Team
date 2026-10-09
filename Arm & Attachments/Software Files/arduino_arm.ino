@@ -1,109 +1,50 @@
-#include "DRV8825.h"
-// For RAMPS 1.4
-
-// ============ MICROSTEPPING CONFIGURATION ============
-// Change this value to match your physical jumper configuration:
-//   32 = 1/32 microstepping (all 3 jumpers installed) - smoother, slower, less torque
-//   16 = 1/16 microstepping (MS1 + MS2 jumpers)
-//    8 = 1/8  microstepping (MS1 + MS3 jumpers)
-//    4 = 1/4  microstepping (only MS2 jumper) - choppier, faster, MORE TORQUE
-//    2 = 1/2  microstepping (only MS1 jumper)
-//    1 = full step (no jumpers)
-#define MICROSTEP_MODE 32
-#define STEPS_PER_REV (200 * MICROSTEP_MODE)  // 200 = standard 1.8° stepper
-// =====================================================
+#include <SimpleFOC.h>
+#include "controlfoc.h"
+#include "commands.h"
 
 // ================= ARM SPEED CONFIG ==================
 
 // effectorSpd: speed (RPM) of opening/closing end effector
-#define EFFECTOR_SPD 40
+#define EFFECTOR_SPD 40.0
 // effectorEase: speed (RPM) of easing the opening/closing of the end effector
-#define EFFECTOR_EASE 20
-// effectorTimeFull: time (ms) for effector to move at full speed when opening/closing
-#define EFFECTOR_TIME_FULL 750
-// effectorTimeEase: time (ms) for effector to move at eased speed when opening/closing
+#define EFFECTOR_EASE 20.0
+// effectorTimeFull: time (ms) the effector spends moving after starting to move
+#define EFFECTOR_TIME_FULL 1000
+// effectorTimeEase: time (ms) the effector spends at eased speed after starting to ease
 #define EFFECTOR_TIME_EASE 250
 
-// baseSpd: speed (RPM) of the arm base
-#define BASE_SPD 20
-
 // armSpd: speed (RPM) of the arm shoulder & elbow
-#define ARM_SPD 20
+#define ARM_SPD 20.0
 
 // =====================================================
 
-// arm base
-#define E0_STEP_PIN 26
-#define E0_DIR_PIN 28
-#define E0_ENABLE_PIN 24
+// switch between -1 and 1 if motors are rotating the wrong way
+#define DIR_EFFECTOR 1
+#define DIR_SHOULDER 1
+#define DIR_ELBOW 1
 
-// arm shoulder
-#define X_STEP_PIN 54
-#define X_DIR_PIN 55
-#define X_ENABLE_PIN 38
+// motor and driver definitions
+// the first 3 numbers of the driver definitions are the PWM pins those motors should be connected to
+// the fourth is NOT_SET because we aren't using enable pins for the BLDCs
+BLDCMotor motor_effector(POLE_PAIRS);
+BLDCDriver3PWM driver_effector(10, 9, 8, NOT_SET);
+BLDCMotor motor_shoulder(POLE_PAIRS);
+BLDCDriver3PWM driver_shoulder(7, 6, 5, NOT_SET);
+BLDCMotor motor_elbow(POLE_PAIRS);
+BLDCDriver3PWM driver_elbow(4, 3, 2, NOT_SET);
 
-// arm elbow
-#define Y_STEP_PIN 60
-#define Y_DIR_PIN 61
-#define Y_ENABLE_PIN 56
+// target velocities (RPM)
+float v_target_effector = 0.0;
+float v_target_shoulder = 0.0;
+float v_target_elbow = 0.0;
 
-// end effector
-#define Z_STEP_PIN 46
-#define Z_DIR_PIN 48
-#define Z_ENABLE_PIN 62
+// current velocities (RPM)
+float v_curr_effector = 0.0;
+float v_curr_shoulder = 0.0;
+float v_curr_elbow = 0.0;
 
-// switch if end effector is rotating the wrong way
-#define DIR_OPEN true
-// switch if base is rotating the wrong way
-#define DIR_CW false
-
-// arm base: E0
-DRV8825 armBase(E0_STEP_PIN, E0_DIR_PIN, E0_ENABLE_PIN, STEPS_PER_REV);
-
-// arm shoulder: X
-DRV8825 armShoulder(X_STEP_PIN, X_DIR_PIN, X_ENABLE_PIN, STEPS_PER_REV);
-
-// arm elbow: Y
-DRV8825 armElbow(Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, STEPS_PER_REV);
-
-// end effector: Z
-DRV8825 endEffector(Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, STEPS_PER_REV);
-
-// global checkers for starting or stopping
-int on = 0;
+// global checker for stopping
 int stop = 0;
-
-// Command signal hex ids
-enum COMMANDS {
-  STOP = 0x00, // stops wheels
-  FWD = 0x01, // drive forward
-  REV = 0x02, // drive backwards
-  LEFT = 0x03, // turn left
-  RIGHT = 0x04, // turn right
-  HALT = 0xff, // seems unused
-  FRONT = 0x05, // seems unused
-  BACK = 0x06, // seems unused
-  RAISE = 0X07, // seems unused
-  LOWER = 0X08, // seems unused
-
-  // 2026 Team's Additions
-  OPEN_EFFECTOR = 0x09, // start opening end effector
-  CLOSE_EFFECTOR = 0x0A, // start closing end effector
-  STOP_EFFECTOR = 0x0B, // forcibly stops the opening/closing of end effector
-  ARM_ROTATE_CW = 0x0C, // rotates base clockwise
-  ARM_ROTATE_CCW = 0x0D, // rotates base counterclockwise
-  ARM_STOP_ROTATE = 0x0E, // stops base rotation
-  ARM_FWD_SHOULDER = 0x0F, // rotates shoulder forwards
-  ARM_REV_SHOULDER = 0x10, // rotates shoulder backwards
-  ARM_STOP_SHOULDER = 0x11, // stops shoulder rotation
-  ARM_FWD_ELBOW = 0x12, // rotates elbow forwards
-  ARM_REV_ELBOW = 0x13, // rotates elbow backwards
-  ARM_STOP_ELBOW = 0x14, // stops elbow rotation
-  ARM_FWD_BOTH = 0x15, // rotates shoulder & elbow forwards
-  ARM_REV_BOTH = 0x16, // rotates shoulder & elbow backwards
-  ARM_STOP_BOTH = 0x17, // stops shoulder & elbow rotation
-  ARM_STOP_ALL = 0x18 // stops effector, base, shoulder, & elbow
-};
 
 byte last_command = STOP;
 
@@ -112,48 +53,78 @@ long command_timeout = 1000;  // ms to wait for next command before stopping
 
 long time = millis();
 long timeout = 0;
-long time1 = 0;
+long time1 = millis();
+float accel_change = 0.0;
 
-// Set to current time to activate the end effector, or current time minus EFFECTOR_TIME_FULL and EFFECTOR_TIME_EASE to force stop
-long timeEffectorStart = time - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;
+long effector_stop_time = time1;
 
 void setup() {
   // use USB on serial 115200
   // I think this actually just activates the serial with a bitrate of 115200? - Lucas
   Serial.begin(115200);
-
-
-  // set up the LED for ability to see if recieving commands
-  pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, LOW);
-
-  // arm base/shoulder/elbow initial
-  armBase.set_enabled(true);
-  armBase.set_direction(false);
-  armBase.set_speed(0);
   
-  armShoulder.set_enabled(true);
-  armShoulder.set_direction(false);
-  armShoulder.set_speed(0);
-
-  armElbow.set_enabled(true);
-  armElbow.set_direction(false);
-  armElbow.set_speed(0);
+  /*// set up the LED for ability to see if recieving commands
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, LOW);*/
 
   // end effector initial
-  endEffector.set_enabled(true);
-  endEffector.set_direction(false);
-  endEffector.set_speed(0);
+  driver_effector.voltage_power_supply = SUPPLY_VOLTAGE;
+  driver_effector.voltage_limit = DRIVER_VOLTAGE_LIMIT;
+  driver_effector.pwm_frequency = PWM_FREQUENCY;
+  driver_effector.init();
+  
+  motor_effector.linkDriver(&driver_effector);
+  motor_effector.controller = MotionControlType::velocity_openloop; // Note: considering MotionControlType::angle_openloop as alternative for end effector specifically
+  motor_effector.voltage_limit = SUPPLY_VOLTAGE;
+  motor_effector.init();
+  motor_effector.enable();
+
+  // arm shoulder initial
+  driver_shoulder.voltage_power_supply = SUPPLY_VOLTAGE;
+  driver_shoulder.voltage_limit = DRIVER_VOLTAGE_LIMIT;
+  driver_shoulder.pwm_frequency = PWM_FREQUENCY;
+  driver_shoulder.init();
+  
+  motor_shoulder.linkDriver(&driver_shoulder);
+  motor_shoulder.controller = MotionControlType::velocity_openloop;
+  motor_shoulder.voltage_limit = SUPPLY_VOLTAGE;
+  motor_shoulder.init();
+  motor_shoulder.enable();
+
+  // arm elbow initial
+  driver_elbow.voltage_power_supply = SUPPLY_VOLTAGE;
+  driver_elbow.voltage_limit = DRIVER_VOLTAGE_LIMIT;
+  driver_elbow.pwm_frequency = PWM_FREQUENCY;
+  driver_elbow.init();
+  
+  motor_elbow.linkDriver(&driver_elbow);
+  motor_elbow.controller = MotionControlType::velocity_openloop;
+  motor_elbow.voltage_limit = SUPPLY_VOLTAGE;
+  motor_elbow.init();
+  motor_elbow.enable();
 }
 
 void loop() {
 
-  time1 = millis();
-  update_motors();
+  // FOC loop
+  for(int i = 0; i < LOOP_DUTY_CYCLE; i++) {
+    time1 = millis();
+    accel_change = min((time1-time) * ACCEL_RATE, MAX_ACCEL);
+    
+    // Check serial commands every some number of loops
+    if (i % LOOP_INPUT_CYCLE = 0) {
+      read_serial();
+    }
 
-  read_serial();
+    // Update motors
+    update_motors();
 
+    time = time1;
+  }
+
+  // Check easing
   checkEffectorEasing();
+  // If shoulder/elbow easing is added it should be here
 
   // call stop function if stopping
   if (stop == 1) {
@@ -163,17 +134,42 @@ void loop() {
   // call stop function if we get stuck in a loop and it wont slow down after 2500 miliseconds
   if (timeout == 750) {
     stop = 1;
-    on = 0;
     Stop();
   }
 }
 
 // updates the motors
 void update_motors() {
-  armBase.update();
-  armShoulder.update();
-  armElbow.update();
-  endEffector.update();
+  // change speeds
+  // change end effector speed
+  if (v_target_effector<v_curr_effector) {
+    v_curr_effector = max(v_target_effector, v_curr_effector - accel_change);
+  }
+  else if (v_target_effector>v_curr_effector) {
+    v_curr_effector = min(v_target_effector, v_curr_effector + accel_change);
+  }
+  // change shoulder speed
+  if (v_target_shoulder<v_curr_shoulder) {
+    v_curr_shoulder = max(v_target_shoulder, v_curr_shoulder - accel_change);
+  }
+  else if (v_target_shoulder>v_curr_shoulder) {
+    v_curr_shoulder = min(v_target_shoulder, v_curr_shoulder + accel_change);
+  }
+  // change elbow speed
+  if (v_target_elbow<v_curr_elbow) {
+    v_curr_elbow = max(v_target_elbow, v_curr_elbow - accel_change);
+  }
+  else if (v_target_elbow>v_curr_elbow) {
+    v_curr_elbow = min(v_target_elbow, v_curr_elbow + accel_change);
+  }
+  
+  // move motors
+  motor_effector.loopFOC();
+  motor_effector.move(DIR_EFFECTOR * v_curr_effector);
+  motor_shoulder.loopFOC();
+  motor_shoulder.move(DIR_SHOULDER * v_curr_shoulder);
+  motor_elbow.loopFOC();
+  motor_elbow.move(DIR_ELBOW * v_curr_elbow);
 }
 
 // checks for commands being sent over the Serial port to the arduino/Ramps board
@@ -185,90 +181,67 @@ void read_serial() {
     switch (last_command) {
       case STOP:
         stop = 1;
-        on = 0;
         Stop();
         break;
       
       case OPEN_EFFECTOR:
-        endEffector.set_direction(DIR_OPEN);
-        timeEffectorStart = time1;
+        effector_stop_time = time1+EFFECTOR_TIME_FULL;
+        v_target_effector = EFFECTOR_SPD;
         break;
 
       case CLOSE_EFFECTOR:
-        endEffector.set_direction(!DIR_OPEN);
-        timeEffectorStart = time1;
+        effector_stop_time = time1+EFFECTOR_TIME_FULL;
+        v_target_effector = -EFFECTOR_SPD;
         break;
 
       case STOP_EFFECTOR:
-        timeEffectorStart = time1 - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;
-        break;
-
-      case ARM_ROTATE_CW:
-        armBase.set_direction(DIR_CW);
-        armBase.set_speed(BASE_SPD);
+        v_target_effector = 0.0;
         break;
       
-      case ARM_ROTATE_CCW:
-        armBase.set_direction(!DIR_CW);
-        armBase.set_speed(BASE_SPD);
-        break;
-
-      case ARM_STOP_ROTATE:
-        armBase.set_speed(0);
-        break;
-
       case ARM_FWD_ELBOW:
-        armElbow.set_direction(true);
-        armElbow.set_speed(ARM_SPD);
+        v_target_elbow = ARM_SPD;
         break;
       
       case ARM_REV_ELBOW:
-        armElbow.set_direction(false);
-        armElbow.set_speed(ARM_SPD);
+        v_target_elbow = -ARM_SPD;
         break;
       
       case ARM_STOP_ELBOW:
-        armElbow.set_speed(0);
+        v_target_elbow = 0.0;
         break;
       
       case ARM_FWD_SHOULDER:
-        armShoulder.set_direction(true);
-        armShoulder.set_speed(ARM_SPD);
+        v_target_shoulder = ARM_SPD;
         break;
       
       case ARM_REV_SHOULDER:
-        armShoulder.set_direction(false);
-        armShoulder.set_speed(ARM_SPD);
+        v_target_shoulder = -ARM_SPD;
         break;
       
       case ARM_STOP_SHOULDER:
-        armShoulder.set_speed(0);
+        v_target_shoulder = 0.0;
         break;
 
       case ARM_FWD_BOTH:
-        armElbow.set_direction(true);
-        armElbow.set_speed(ARM_SPD);
-        armShoulder.set_direction(true);
-        armShoulder.set_speed(ARM_SPD);
+        v_target_elbow = ARM_SPD;
+        v_target_shoulder = ARM_SPD;
         break;
       
       case ARM_REV_BOTH:
-        armElbow.set_direction(false);
-        armElbow.set_speed(ARM_SPD);
-        armShoulder.set_direction(false);
-        armShoulder.set_speed(ARM_SPD);
+        v_target_elbow = -ARM_SPD;
+        v_target_shoulder = -ARM_SPD;
         break;
       
       case ARM_STOP_BOTH:
-        armElbow.set_speed(0);
-        armShoulder.set_speed(0);
+        v_target_elbow = 0.0;
+        v_target_shoulder = 0.0;
         break;
 
       case ARM_STOP_ALL:
-        armBase.set_speed(0);
-        armShoulder.set_speed(0);
-        armElbow.set_speed(0);
-        timeEffectorStart = time1 - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;
+        //armBase.set_speed(0);
+        v_target_elbow = 0.0;
+        v_target_shoulder = 0.0;
+        v_target_effector = 0.0;
         break;
 
       // All of these are handled fully by the other arduino
@@ -282,9 +255,8 @@ void read_serial() {
         break;
       
       default:
-        digitalWrite(LED_BUILTIN, LOW);
+        //digitalWrite(LED_BUILTIN, LOW);
         stop = 1;
-        on = 0;
         Stop();
         break;
     }
@@ -293,20 +265,30 @@ void read_serial() {
 
 // Adjust effector speed based on time since start of movement
 void checkEffectorEasing() {
-  if (endEffector.get_enabled()) {
-    if (time1 - timeEffectorStart < EFFECTOR_TIME_FULL) {
-      endEffector.set_speed(EFFECTOR_SPD);
-    } else if (time1 - timeEffectorStart < EFFECTOR_TIME_FULL + EFFECTOR_TIME_EASE) {
-      endEffector.set_speed(EFFECTOR_EASE);
-    } else {
-      endEffector.set_speed(0);
+  if (v_target_effector!=0.0) {
+    if (time1>effector_stop_time) {
+      v_target_effector = 0.0;
+    }
+    else if (time1>effector_stop_time-EFFECTOR_TIME_EASE) {
+      v_target_effector = velSign(v_target_effector) * EFFECTOR_EASE;
     }
   }
 }
 
-// The stop function to be called to slowly stop the motors
+// Gets the sign of a velocity float (used in easing)
+int velSign (float velInput) {
+  if (velInput>0.0) {
+    return 1;
+  }
+  if (velInput<0.0) {
+    return -1;
+  }
+  return 0;
+}
+
+// The stop function to be called to stop the motors
 void Stop() {
-  armBase.set_speed(0);
-  armShoulder.set_speed(0);
-  armElbow.set_speed(0);
+  v_target_effector = 0.0;
+  v_target_shoulder = 0.0;
+  v_target_elbow = 0.0;
 }
