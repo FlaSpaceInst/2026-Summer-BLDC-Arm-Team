@@ -8,7 +8,10 @@
 #define EFFECTOR_SPD 40.0
 // effectorEase: speed (RPM) of easing the opening/closing of the end effector
 #define EFFECTOR_EASE 20.0
-//TODO: more effector config definitions
+// effectorTimeFull: time (ms) the effector spends moving after starting to move
+#define EFFECTOR_TIME_FULL 1000
+// effectorTimeEase: time (ms) the effector spends at eased speed after starting to ease
+#define EFFECTOR_TIME_EASE 250
 
 // armSpd: speed (RPM) of the arm shoulder & elbow
 #define ARM_SPD 20.0
@@ -52,6 +55,8 @@ long time = millis();
 long timeout = 0;
 long time1 = millis();
 float accel_change = 0.0;
+
+long effector_stop_time = time1;
 
 void setup() {
   // use USB on serial 115200
@@ -180,11 +185,13 @@ void read_serial() {
         break;
       
       case OPEN_EFFECTOR:
-        //TODO: open end effector code
+        effector_stop_time = time1+EFFECTOR_TIME_FULL;
+        v_target_effector = EFFECTOR_SPD;
         break;
 
       case CLOSE_EFFECTOR:
-        //TODO: close end effector code
+        effector_stop_time = time1+EFFECTOR_TIME_FULL;
+        v_target_effector = -EFFECTOR_SPD;
         break;
 
       case STOP_EFFECTOR:
@@ -258,7 +265,25 @@ void read_serial() {
 
 // Adjust effector speed based on time since start of movement
 void checkEffectorEasing() {
-  //TODO: effector easing
+  if (v_target_effector!=0.0) {
+    if (time1>effector_stop_time) {
+      v_target_effector = 0.0;
+    }
+    else if (time1>effector_stop_time-EFFECTOR_TIME_EASE) {
+      v_target_effector = velSign(v_target_effector) * EFFECTOR_EASE;
+    }
+  }
+}
+
+// Gets the sign of a velocity float (used in easing)
+int velSign (float velInput) {
+  if (velInput>0.0) {
+    return 1;
+  }
+  if (velInput<0.0) {
+    return -1;
+  }
+  return 0;
 }
 
 // The stop function to be called to stop the motors
