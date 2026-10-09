@@ -8,6 +8,7 @@
 #define EFFECTOR_SPD 40
 // effectorEase: speed (RPM) of easing the opening/closing of the end effector
 #define EFFECTOR_EASE 20
+//TODO: more effector config definitions
 
 // armSpd: speed (RPM) of the arm shoulder & elbow
 #define ARM_SPD 20
