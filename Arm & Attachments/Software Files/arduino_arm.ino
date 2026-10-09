@@ -40,7 +40,7 @@ long command_timeout = 1000;  // ms to wait for next command before stopping
 
 long time = millis();
 long timeout = 0;
-long time1 = 0;
+long time1 = millis();
 
 void setup() {
   // use USB on serial 115200
@@ -71,6 +71,8 @@ void loop() {
 
     // Update motors
     update_motors();
+
+    time = time1;
   }
 
   // Check easing
