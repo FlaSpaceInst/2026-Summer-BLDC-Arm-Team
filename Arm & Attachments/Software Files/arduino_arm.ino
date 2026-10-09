@@ -5,13 +5,13 @@
 // ================= ARM SPEED CONFIG ==================
 
 // effectorSpd: speed (RPM) of opening/closing end effector
-#define EFFECTOR_SPD 40
+#define EFFECTOR_SPD 40.0
 // effectorEase: speed (RPM) of easing the opening/closing of the end effector
-#define EFFECTOR_EASE 20
+#define EFFECTOR_EASE 20.0
 //TODO: more effector config definitions
 
 // armSpd: speed (RPM) of the arm shoulder & elbow
-#define ARM_SPD 20
+#define ARM_SPD 20.0
 
 // =====================================================
 
@@ -178,21 +178,19 @@ void read_serial() {
         stop = 1;
         Stop();
         break;
-      //TODO: continue updating from here
+      
       case OPEN_EFFECTOR:
-        endEffector.set_direction(DIR_OPEN);
-        timeEffectorStart = time1;
+        //TODO: open end effector code
         break;
 
       case CLOSE_EFFECTOR:
-        endEffector.set_direction(!DIR_OPEN);
-        timeEffectorStart = time1;
+        //TODO: close end effector code
         break;
 
       case STOP_EFFECTOR:
-        timeEffectorStart = time1 - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;
+        v_target_effector = 0.0;
         break;
-
+      //TODO: continue updating from here
       case ARM_FWD_ELBOW:
         armElbow.set_direction(true);
         armElbow.set_speed(ARM_SPD);
