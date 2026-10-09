@@ -43,8 +43,9 @@ float v_curr_effector = 0.0;
 float v_curr_shoulder = 0.0;
 float v_curr_elbow = 0.0;
 
-// global checker for stopping
+// global checkers for stopping and halted
 int stop = 0;
+int halt = 0;
 
 byte last_command = STOP;
 
