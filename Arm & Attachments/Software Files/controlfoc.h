@@ -7,6 +7,7 @@
 #define POLE_PAIRS 7
 #define PWM_FREQUENCY 20000          // Hz
 #define SUPPLY_VOLTAGE 12.0          // volts
+#define DRIVER_VOLTAGE_LIMIT 8       // volts
 #define LOOP_DUTY_CYCLE 1000         // FOC loop iterations per main loop pass (controls CPU split between FOC and I/O)
 
 // function prototypes
