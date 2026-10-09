@@ -60,14 +60,20 @@ void setup() {
 
 void loop() {
 
-  time1 = millis();
+  // FOC loop
+  for(int i = 0; i < LOOP_DUTY_CYCLE; i++) {
+    time1 = millis();
+    
+    // Check serial commands every some number of loops
+    if (i % LOOP_INPUT_CYCLE = 0) {
+      read_serial();
+    }
 
-  //TODO: rearrange these calls as neccessary
-  update_motors();
-
-  read_serial();
-
-  checkEffectorEasing();
+    // Cheack easing and update motors
+    checkEffectorEasing();
+    // If shoulder/elbow easing is added it should be here
+    update_motors();
+  }
 
   // call stop function if stopping
   if (stop == 1) {
