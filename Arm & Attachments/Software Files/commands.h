@@ -4,12 +4,12 @@
 
 // Command hex ids
 enum COMMANDS {
-  STOP = 0x00, // stops wheels
+  HALT = 0xff, // permanently halts all rover movement
+  STOP = 0x00, // slows the rover to a complete stop
   FWD = 0x01, // drive forward
   REV = 0x02, // drive backwards
   LEFT = 0x03, // turn left
   RIGHT = 0x04, // turn right
-  //HALT = 0xff, // deprecated
   FRONT = 0x05, // seems unused, probably related to drums
   BACK = 0x06, // seems unused, probably related to drums
   RAISE = 0X07, // seems unused, probably related to drums

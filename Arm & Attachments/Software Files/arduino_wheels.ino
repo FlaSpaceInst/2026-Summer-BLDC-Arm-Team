@@ -141,8 +141,8 @@ DRV8825 armElbow(A2_STEP_PIN, A2_DIR_PIN, A2_ENABLE_PIN, STEPS_PER_REV);
 
 byte last_command = STOP;
 
-long last_command_time = 0;   // ms since last command
-long command_timeout = 1000;  // ms to wait for next command before stopping
+//long last_command_time = 0;   // ms since last command
+//long command_timeout = 1000;  // ms to wait for next command before stopping
 
 // maxSpeed uses the define from top of file
 long maxSpeed = MAX_SPEED;
@@ -152,7 +152,7 @@ long idle_left_speed = 1;
 long idle_right_speed = 1;
 
 long time = millis();
-long timeout = 0;
+//long timeout = 0;
 long time1 = 0;
 
 /*// Set to current time to activate the end effector, or current time minus EFFECTOR_TIME_FULL and EFFECTOR_TIME_EASE to force stop
@@ -162,9 +162,10 @@ long timeEffectorStart = time - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;*/
 bool rs = false;  // right side
 bool ls = false;  // left side
 
-// global checkers for starting or stopping
+// global checkers for starting, stopping, and halting
 int on = 0;
 int stop = 0;
+int halt = 0;
 
 // variable to control slow stop/accelerate (uses define from top)
 int slowSpeed = ACCEL_INCREMENT;
@@ -230,14 +231,13 @@ void setup() {
 }
 
 // seemingly unused variables
-long last_frequency_check_time = 0;
-long counter = 0;
+//long last_frequency_check_time = 0;
+//long counter = 0;
 
 
 void loop() {
 
   time1 = millis();
-  update_motors();
 
   read_serial();
 
@@ -246,17 +246,21 @@ void loop() {
   // Controlls the slow start for the stepper motor checks if a certain amount of miliseconds have passed and if we want to speed up
   if (time1 - time >= ACCEL_INTERVAL && on == 1) {
     Speedup(ls, rs);
+    time=time1;
   }
   // controlls the soft stop for the stepper motor checks if a certain amount of have passed and if we want to stop
   if (time1 - time >= ACCEL_INTERVAL && stop == 1) {
     Stop();
+    time=time1;
   }
   // call stop function if we get stuck in a loop and it wont slow down after 2500 miliseconds
-  if (timeout == 750) {
+  /*if (timeout == 750) {
     stop = 1;
     on = 0;
     Stop();
-  }
+  }*/
+
+  update_motors();
 }
 // updates the motors
 void update_motors() {
@@ -297,7 +301,6 @@ void read_serial() {
       case STOP:
         stop = 1;
         on = 0;
-        Stop();
         break;
 
       case FWD:
@@ -476,12 +479,24 @@ void read_serial() {
         armElbow.set_speed(0);
         timeEffectorStart = time1 - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;*/
         break;
+
+      case HALT:
+        halt = 1;
+        on = 0;
+        frontLeft.set_speed(0);
+        frontRight.set_speed(0);
+        backLeft.set_speed(0);
+        backRight.set_speed(0);
+        armBase.set_speed(0);
+        leftSpeed = 0;
+        rightSpeed = 0;
+        Stop();
+        break;
       
       default:
         digitalWrite(LED_BUILTIN, LOW);
         stop = 1;
         on = 0;
-        Stop();
         break;
     }
   }
