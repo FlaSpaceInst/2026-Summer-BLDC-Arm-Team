@@ -281,6 +281,7 @@ void checkEffectorEasing() {
 
 // The stop function to be called to stop the motors
 void Stop() {
-  armShoulder.set_speed(0);
-  armElbow.set_speed(0);
+  v_target_effector = 0.0;
+  v_target_shoulder = 0.0;
+  v_target_elbow = 0.0;
 }
