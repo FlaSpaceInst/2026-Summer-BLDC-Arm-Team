@@ -258,16 +258,7 @@ void read_serial() {
 
 // Adjust effector speed based on time since start of movement
 void checkEffectorEasing() {
-  //TODO: continue updating from here
-  if (endEffector.get_enabled()) {
-    if (time1 - timeEffectorStart < EFFECTOR_TIME_FULL) {
-      endEffector.set_speed(EFFECTOR_SPD);
-    } else if (time1 - timeEffectorStart < EFFECTOR_TIME_FULL + EFFECTOR_TIME_EASE) {
-      endEffector.set_speed(EFFECTOR_EASE);
-    } else {
-      endEffector.set_speed(0);
-    }
-  }
+  //TODO: effector easing
 }
 
 // The stop function to be called to stop the motors
