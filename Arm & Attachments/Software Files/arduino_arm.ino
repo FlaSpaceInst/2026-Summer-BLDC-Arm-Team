@@ -62,11 +62,41 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, LOW);*/
 
-  // arm shoulder/eblow initial
-  //TODO
-
   // end effector initial
-  //TODO
+  driver_effector.voltage_power_supply = SUPPLY_VOLTAGE;
+  driver_effector.voltage_limit = DRIVER_VOLTAGE_LIMIT;
+  driver_effector.pwm_frequency = PWM_FREQUENCY;
+  driver_effector.init();
+  
+  motor_effector.linkDriver(&driver_effector);
+  motor_effector.controller = MotionControlType::velocity_openloop;
+  motor_effector.voltage_limit = SUPPLY_VOLTAGE;
+  motor_effector.init();
+  motor_effector.enable();
+
+  // arm shoulder initial
+  driver_shoulder.voltage_power_supply = SUPPLY_VOLTAGE;
+  driver_shoulder.voltage_limit = DRIVER_VOLTAGE_LIMIT;
+  driver_shoulder.pwm_frequency = PWM_FREQUENCY;
+  driver_shoulder.init();
+  
+  motor_shoulder.linkDriver(&driver_shoulder);
+  motor_shoulder.controller = MotionControlType::velocity_openloop;
+  motor_shoulder.voltage_limit = SUPPLY_VOLTAGE;
+  motor_shoulder.init();
+  motor_shoulder.enable();
+
+  // arm elbow initial
+  driver_elbow.voltage_power_supply = SUPPLY_VOLTAGE;
+  driver_elbow.voltage_limit = DRIVER_VOLTAGE_LIMIT;
+  driver_elbow.pwm_frequency = PWM_FREQUENCY;
+  driver_elbow.init();
+  
+  motor_elbow.linkDriver(&driver_elbow);
+  motor_elbow.controller = MotionControlType::velocity_openloop;
+  motor_elbow.voltage_limit = SUPPLY_VOLTAGE;
+  motor_elbow.init();
+  motor_elbow.enable();
 }
 
 void loop() {
