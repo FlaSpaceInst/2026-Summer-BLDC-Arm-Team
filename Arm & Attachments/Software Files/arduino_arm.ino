@@ -53,7 +53,8 @@ void setup() {
 void loop() {
 
   time1 = millis();
-  //TODO: continue updating from here
+
+  //TODO: rearrange these calls as neccessary
   update_motors();
 
   read_serial();
@@ -74,10 +75,7 @@ void loop() {
 
 // updates the motors
 void update_motors() {
-  armBase.update();
-  armShoulder.update();
-  armElbow.update();
-  endEffector.update();
+  //TODO: whatever is needed here
 }
 
 // checks for commands being sent over the Serial port to the arduino/Ramps board
@@ -89,10 +87,9 @@ void read_serial() {
     switch (last_command) {
       case STOP:
         stop = 1;
-        on = 0;
         Stop();
         break;
-      
+      //TODO: continue updating from here
       case OPEN_EFFECTOR:
         endEffector.set_direction(DIR_OPEN);
         timeEffectorStart = time1;
@@ -155,7 +152,7 @@ void read_serial() {
         break;
 
       case ARM_STOP_ALL:
-        armBase.set_speed(0);
+        //armBase.set_speed(0);
         armShoulder.set_speed(0);
         armElbow.set_speed(0);
         timeEffectorStart = time1 - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;
@@ -172,9 +169,8 @@ void read_serial() {
         break;
       
       default:
-        digitalWrite(LED_BUILTIN, LOW);
+        //digitalWrite(LED_BUILTIN, LOW);
         stop = 1;
-        on = 0;
         Stop();
         break;
     }
