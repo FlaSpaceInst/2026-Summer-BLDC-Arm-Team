@@ -380,11 +380,8 @@ export default class ControllerScreen extends React.Component {
 
             {/* Forwards button. */}
             <TouchableOpacity style={ControllerStyle.upAndDownDPad}
-              onPressIn={() => {
+              onPress={() => {
                 this.sendOperation(Robot.WHEELS, WheelOperation.FORWARD);
-              }}
-              onPressOut={() => {
-                this.sendOperation(Robot.WHEELS, WheelOperation.STOP);
               }}
             >
               <FontAwesome name="chevron-up" size={50} color="#fff" />
@@ -395,23 +392,26 @@ export default class ControllerScreen extends React.Component {
 
               {/* Left button. */}
               <TouchableOpacity style={ControllerStyle.dPadLeft}
-                onPressIn={() => {
+                onPress={() => {
                   this.sendOperation(Robot.WHEELS, WheelOperation.LEFT);
-                }}
-                onPressOut={() => {
-                  this.sendOperation(Robot.WHEELS, WheelOperation.STOP);
                 }}
               >
                 <FontAwesome name="chevron-left" size={50} color="#fff" />
               </TouchableOpacity>
 
+              {/* Center stop button: reset wheel speed to zero. */}
+              <TouchableOpacity
+                accessibilityLabel="Stop wheels"
+                style={{ width: 58, height: 58, alignSelf: 'center', marginHorizontal: 4, backgroundColor: '#5D6061', borderRadius: 5, elevation: 5, justifyContent: 'center', alignItems: 'center' }}
+                onPress={() => { this.sendOperation(Robot.WHEELS, WheelOperation.STOP); }}
+              >
+                <FontAwesome name="stop" size={24} color="#fff" />
+              </TouchableOpacity>
+
               {/* Right button. */}
               <TouchableOpacity style={ControllerStyle.dPadRight}
-                onPressIn={() => {
+                onPress={() => {
                   this.sendOperation(Robot.WHEELS, WheelOperation.RIGHT);
-                }}
-                onPressOut={() => {
-                  this.sendOperation(Robot.WHEELS, WheelOperation.STOP);
                 }}
               >
                 <FontAwesome name="chevron-right" size={50} color="#fff" />
@@ -423,11 +423,8 @@ export default class ControllerScreen extends React.Component {
 
             {/* Backwards button. */}
             <TouchableOpacity style={ControllerStyle.upAndDownDPad}
-              onPressIn={() => {
+              onPress={() => {
                 this.sendOperation(Robot.WHEELS, WheelOperation.BACKWARD);
-              }}
-              onPressOut={() => {
-                this.sendOperation(Robot.WHEELS, WheelOperation.STOP);
               }}
             >
               <FontAwesome name="chevron-down" size={50} color="#fff" />
