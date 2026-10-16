@@ -1,4 +1,5 @@
 #include "DRV8825.h"
+#include "commands.h"
 // For RAMPS 1.4
 /*
 
@@ -47,14 +48,13 @@ little wheel = 15 1/2
 // effectorTimeFull: time (ms) for effector to move at full speed when opening/closing
 #define EFFECTOR_TIME_FULL 750
 // effectorTimeEase: time (ms) for effector to move at eased speed when opening/closing
-#define EFFECTOR_TIME_EASE 250*/
+#define EFFECTOR_TIME_EASE 250
+
+// armSpd: speed (RPM) of the arm shoulder & elbow
+#define ARM_SPD 20 */
 
 // baseSpd: speed (RPM) of the arm base
 #define BASE_SPD 20
-
-// armSpd: speed (RPM) of the arm shoulder & elbow
-// Removed, because a separate arduino is needed
-// #define ARM_SPD 20
 
 // =====================================================
 
@@ -102,10 +102,14 @@ little wheel = 15 1/2
 #define E1_DIR_PIN 34
 #define E1_ENABLE_PIN 30
 
+/* Removed, because a separate arduino is needed
 // switch if end effector is rotating the wrong way
 #define DIR_OPEN true
+*/
+
 // switch if base is rotating the wrong way
 #define DIR_CW false
+
 
 
 
@@ -135,42 +139,10 @@ DRV8825 armShoulder(A1_STEP_PIN, A1_DIR_PIN, A1_ENABLE_PIN, STEPS_PER_REV);
 DRV8825 armElbow(A2_STEP_PIN, A2_DIR_PIN, A2_ENABLE_PIN, STEPS_PER_REV);
 */
 
-// Command hex ids
-enum COMMANDS {
-  STOP = 0x00, // stops wheels
-  FWD = 0x01, // drive forward
-  REV = 0x02, // drive backwards
-  LEFT = 0x03, // turn left
-  RIGHT = 0x04, // turn right
-  HALT = 0xff, // seems unused
-  FRONT = 0x05, // seems unused
-  BACK = 0x06, // seems unused
-  RAISE = 0X07, // seems unused
-  LOWER = 0X08, // seems unused
-
-  // 2026 Team's Additions
-  OPEN_EFFECTOR = 0x09, // start opening end effector
-  CLOSE_EFFECTOR = 0x0A, // start closing end effector
-  STOP_EFFECTOR = 0x0B, // forcibly stops the opening/closing of end effector
-  ARM_ROTATE_CW = 0x0C, // rotates base clockwise
-  ARM_ROTATE_CCW = 0x0D, // rotates base counterclockwise
-  ARM_STOP_ROTATE = 0x0E, // stops base rotation
-  ARM_FWD_SHOULDER = 0x0F, // rotates shoulder forwards
-  ARM_REV_SHOULDER = 0x10, // rotates shoulder backwards
-  ARM_STOP_SHOULDER = 0x11, // stops shoulder rotation
-  ARM_FWD_ELBOW = 0x12, // rotates elbow forwards
-  ARM_REV_ELBOW = 0x13, // rotates elbow backwards
-  ARM_STOP_ELBOW = 0x14, // stops elbow rotation
-  ARM_FWD_BOTH = 0x15, // rotates shoulder & elbow forwards
-  ARM_REV_BOTH = 0x16, // rotates shoulder & elbow backwards
-  ARM_STOP_BOTH = 0x17, // stops shoulder & elbow rotation
-  ARM_STOP_ALL = 0x18 // stops effector, base, shoulder, & elbow
-};
-
 byte last_command = STOP;
 
-long last_command_time = 0;   // ms since last command
-long command_timeout = 1000;  // ms to wait for next command before stopping
+//long last_command_time = 0;   // ms since last command
+//long command_timeout = 1000;  // ms to wait for next command before stopping
 
 // maxSpeed uses the define from top of file
 long maxSpeed = MAX_SPEED;
@@ -180,7 +152,7 @@ long idle_left_speed = 1;
 long idle_right_speed = 1;
 
 long time = millis();
-long timeout = 0;
+//long timeout = 0;
 long time1 = 0;
 
 /*// Set to current time to activate the end effector, or current time minus EFFECTOR_TIME_FULL and EFFECTOR_TIME_EASE to force stop
@@ -190,9 +162,10 @@ long timeEffectorStart = time - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;*/
 bool rs = false;  // right side
 bool ls = false;  // left side
 
-// global checkers for starting or stopping
+// global checkers for starting, stopping, and halting
 int on = 0;
 int stop = 0;
+int halt = 0;
 
 // variable to control slow stop/accelerate (uses define from top)
 int slowSpeed = ACCEL_INCREMENT;
@@ -232,18 +205,22 @@ void setup() {
   backLeft.set_direction(false);
   backLeft.set_speed(0);
 
+  // arm base initial
+  armBase.set_enabled(true);
+  armBase.set_direction(false);
+  armBase.set_speed(0);
+
   /* Removed, because a separate arduino is needed
   // free driver (end effector) initial
   freeDriver.set_enabled(true);
   freeDriver.set_direction(false);
-  freeDriver.set_speed(0);*/
+  freeDriver.set_speed(0);
 
   // arm base/shoulder/elbow initial
   armBase.set_enabled(true);
   armBase.set_direction(false);
   armBase.set_speed(0);
 
-  /* Removed, because a separate arduino is needed
   armShoulder.set_enabled(true);
   armShoulder.set_direction(false);
   armShoulder.set_speed(0);
@@ -254,14 +231,13 @@ void setup() {
 }
 
 // seemingly unused variables
-long last_frequency_check_time = 0;
-long counter = 0;
+//long last_frequency_check_time = 0;
+//long counter = 0;
 
 
 void loop() {
 
   time1 = millis();
-  update_motors();
 
   read_serial();
 
@@ -270,17 +246,21 @@ void loop() {
   // Controlls the slow start for the stepper motor checks if a certain amount of miliseconds have passed and if we want to speed up
   if (time1 - time >= ACCEL_INTERVAL && on == 1) {
     Speedup(ls, rs);
+    time=time1;
   }
   // controlls the soft stop for the stepper motor checks if a certain amount of have passed and if we want to stop
   if (time1 - time >= ACCEL_INTERVAL && stop == 1) {
     Stop();
+    time=time1;
   }
   // call stop function if we get stuck in a loop and it wont slow down after 2500 miliseconds
-  if (timeout == 750) {
+  /*if (timeout == 750) {
     stop = 1;
     on = 0;
     Stop();
-  }
+  }*/
+
+  update_motors();
 }
 // updates the motors
 void update_motors() {
@@ -291,10 +271,10 @@ void update_motors() {
   frontLeft.update();
 
   // 2026 Team's Additions
-  //freeDriver.update();
   armBase.update();
   //armShoulder.update();
   //armElbow.update();
+  //freeDriver.update();
 }
 // getting hung up and sending stop when we dont want to stop
 // checks for commands being sent over the Serial port to the arduino/Ramps board
@@ -316,12 +296,11 @@ void read_serial() {
     //   last_command = LEFT;
     // if (command == "STOP")
     //   last_command = STOP;
-
+    
     switch (last_command) {
       case STOP:
         stop = 1;
         on = 0;
-        Stop();
         break;
 
       case FWD:
@@ -500,12 +479,24 @@ void read_serial() {
         armElbow.set_speed(0);
         timeEffectorStart = time1 - EFFECTOR_TIME_FULL - EFFECTOR_TIME_EASE;*/
         break;
+
+      case HALT:
+        halt = 1;
+        on = 0;
+        frontLeft.set_speed(0);
+        frontRight.set_speed(0);
+        backLeft.set_speed(0);
+        backRight.set_speed(0);
+        armBase.set_speed(0);
+        leftSpeed = 0;
+        rightSpeed = 0;
+        Stop();
+        break;
       
       default:
         digitalWrite(LED_BUILTIN, LOW);
         stop = 1;
         on = 0;
-        Stop();
         break;
     }
   }
