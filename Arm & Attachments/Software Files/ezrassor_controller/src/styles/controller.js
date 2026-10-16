@@ -450,6 +450,16 @@ const ControllerStyle = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  armMovementButton: {
+    width: 62,
+    height: 62,
+    backgroundColor: '#3a3d3d',
+    borderRadius: 10,
+    elevation: 5,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
   dPadLeft: {
     flex: 1,
     backgroundColor: '#3a3d3d',
