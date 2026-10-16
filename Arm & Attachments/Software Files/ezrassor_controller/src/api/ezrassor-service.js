@@ -8,8 +8,16 @@ export default class EZRASSOR {
     constructor(host, route = '') {
         this.host = host;
         this.route = route;
-        this.setCoordinate(0, 0);
-        this.allStop();
+        this.setCoordinate('0,0');
+        this._twistMsg = {
+            autonomous_toggles: 0,
+            target_coordinate: this.coordinate,
+            wheel_instruction: 'none',
+            front_arm_instruction: 0,
+            back_arm_instruction: 0,
+            front_drum_instruction: 0,
+            back_drum_instruction: 0
+        };
     }
 
     // Getters and Setters
@@ -26,12 +34,12 @@ export default class EZRASSOR {
     }
 
     set route(value) {
-        if (value[0] === '/') {
+        if (value && value[0] === '/') {
             this._route = value.substring(1);
             return;
         }
 
-        this._route = value;
+        this._route = value || '';
     }
 
     get coordinate() {
@@ -39,36 +47,28 @@ export default class EZRASSOR {
     }
 
     setCoordinate(combinedCoordinate) {
+        const coordinates = (typeof combinedCoordinate === 'string') ? combinedCoordinate.trim() : '0,0';
+        const split = coordinates.split(',');
 
-        var coordinates = (typeof combinedCoordinate === "string") ? combinedCoordinate.trim() : '0';
-        var split = coordinates.split(',');
-
-        var x = split[0];
-        var y = '0';
-
-        if (split.length == 2 && split[1] != '') {
+        const x = split[0] || '0';
+        if (split.length == 2 && split[1] !== ''){
             y = split[1];
         }
 
         this._coordinate = {
-            x: parseInt(x),
-            y: parseInt(y)
-        }
+            x: parseInt(x, 10) || 0,
+            y: parseInt(y, 10) || 0
+        };
     }
 
     // Build complete apiPath for HTTP requests
     get apiPath() {
-        console.log('http://' + this.host + '/' + this.route);
         return this.host + this.route;
     }
 
-    // Return custom twist message
+    // Return the current command as JSON for the HTTP layer.
     get twistMsg() {
         return JSON.stringify(this._twistMsg);
-    }
-
-    get toggleDetectionMsg() {
-        return JSON.stringify(this.toggleDetectionMsg);
     }
 
     // Update only the instruction needed
@@ -77,63 +77,65 @@ export default class EZRASSOR {
     }
 
     updateWheelTwistMsg(operation) {
-        var instruction = null;
+        let instruction = null;
+
         switch (operation) {
             case WheelOperation.FORWARD:
-                instruction = { wheel_action: { linear_x: WheelOperation.LINEAR_X_FORWARD, angular_z: 0 } }
+                instruction = { wheel_action: { linear_x: WheelOperation.LINEAR_X_FORWARD, angular_z: 0 } };
                 break;
             case WheelOperation.BACKWARD:
-                instruction = { wheel_action: { linear_x: WheelOperation.LINEAR_X_BACKWARD, angular_z: 0 } }
+                instruction = { wheel_action: { linear_x: WheelOperation.LINEAR_X_BACKWARD, angular_z: 0 } };
                 break;
             case WheelOperation.LEFT:
-                instruction = { wheel_action: { linear_x: 0, angular_z: WheelOperation.ANGULAR_Z_LEFT } }
+                instruction = { wheel_action: { linear_x: 0, angular_z: WheelOperation.ANGULAR_Z_LEFT } };
                 break;
             case WheelOperation.RIGHT:
-                instruction = { wheel_action: { linear_x: 0, angular_z: WheelOperation.ANGULAR_Z_RIGHT } }
+                instruction = { wheel_action: { linear_x: 0, angular_z: WheelOperation.ANGULAR_Z_RIGHT } };
                 break;
             case WheelOperation.STOP:
-                instruction = { wheel_action: { linear_x: 0, angular_z: 0 } }
+                instruction = { wheel_action: { linear_x: 0, angular_z: 0 } };
                 break;
             default:
-                console.log('Invalid wheel part selected');
-                return;
+                console.log('Invalid wheel operation selected');
+                return false;
         }
+
         this._twistMsg = instruction;
+        return true;
     }
 
+    // Kept for compatibility with the existing autonomy controller. Still need to be complete.
     updateAutonomyTwistMsg(instruction) {
-        if (instruction == Operation.DRIVE || instruction == Operation.FULLAUTONOMY) {
+        if (instruction === Operation.DRIVE || instruction === Operation.FULLAUTONOMY) {
             this._twistMsg = {
                 autonomous_toggles: instruction,
                 target_coordinate: this.coordinate
-            }
+            };
             return;
         }
 
         this._twistMsg = { autonomous_toggles: instruction };
     }
 
-    // Stop all robot operations
+    // Stop all robot operations and send the stop command.
     allStop = () => {
         this._twistMsg = {
             autonomous_toggles: 0,
             target_coordinate: this.coordinate,
-            wheel_instruction: "none",
+            wheel_instruction: 'none',
             front_arm_instruction: 0,
             back_arm_instruction: 0,
             front_drum_instruction: 0,
             back_drum_instruction: 0
-        }
+        };
 
-        HTTP.doPost(this.apiPath, this.twistMsg, DEFAULT_EXT);
-    }
+        return HTTP.doPost(this.apiPath, this.twistMsg, DEFAULT_EXT);
+    };
 
     // Execute the corresponding robot command from the enumeration items passed in
     executeRobotCommand(part, operation) {
-        // Needed when a stop override needs to occur
-        if (part == Robot.ALL && operation == Operation.STOP) {
-            this.allStop();
-            return;
+        if (part === Robot.ALL && operation === Operation.STOP) {
+            return this.allStop();
         }
 
         switch (part) {
@@ -150,17 +152,18 @@ export default class EZRASSOR {
                 this.updateTwistMsg({ back_drum_action: operation });
                 break;
             case Robot.WHEELS:
-                // this.updateWheelTwistMsg({wheel_action:operation});
-                this.updateWheelTwistMsg(operation);
-
+                if (!this.updateWheelTwistMsg(operation)) {
+                    return;
+                }
                 break;
             case Robot.AUTONOMY:
-                this.updateAutonomyTwistMsg(routine_action);
+                this.updateAutonomyTwistMsg(operation);
                 break;
             default:
                 console.log('Invalid robot part selected');
                 return;
         }
-        HTTP.doPost(this.apiPath, this.twistMsg, DEFAULT_EXT);
+
+        return HTTP.doPost(this.apiPath, this.twistMsg, DEFAULT_EXT);
     }
 }
