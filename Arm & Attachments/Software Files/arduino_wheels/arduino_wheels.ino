@@ -1,5 +1,5 @@
-#include "utility/DRV8825.h"
-#include "utility/commands.h"
+#include "src/DRV8825.h"
+#include "src/commands.h"
 // For RAMPS 1.4
 /*
 
