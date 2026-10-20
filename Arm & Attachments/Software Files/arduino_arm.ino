@@ -113,7 +113,7 @@ void loop() {
     accel_change = min((time1-time) * ACCEL_RATE, MAX_ACCEL);
     
     // Check serial commands every some number of loops
-    if (halt==0 && i % LOOP_INPUT_CYCLE = 0) {
+    if (halt == 0 && (i % LOOP_INPUT_CYCLE) == 0) {
       read_serial();
       // call stop function if stopping
       if (stop == 1) {
