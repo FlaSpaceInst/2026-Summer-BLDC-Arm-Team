@@ -5,7 +5,8 @@ import {
   Image,
   StatusBar,
   TextInput,
-  TouchableOpacity
+  TouchableOpacity,
+  Modal
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ControllerStyle from 'ezrassor-app/src/styles/controller';
@@ -14,7 +15,7 @@ import logo from 'ezrassor-app/assets/fsiLogo.png';
 import arrowright from 'ezrassor-app/assets/arrowri.png';
 import LottieView from 'lottie-react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { isIpReachable } from '../../functionality/connection';
+import { findRovers, isIpReachable } from '../../functionality/connection';
 import { normalize } from '../../functionality/display';
 
 const DEFAULT_IP = '192.168.1.2:8080';
@@ -29,7 +30,11 @@ export default class IPConnect extends React.Component {
 
     this.state = {
       isLoading: true,
-      ip: null
+      ip: null,
+      isFindingRover: false,
+      discoveryMessage: '',
+      discoveredRovers: [],
+      discoveryModalVisible: false,
     };
 
     this.animation = React.createRef(null);
@@ -117,6 +122,35 @@ export default class IPConnect extends React.Component {
     }
   }
 
+  /** Find available rover services without relying on the manual IP field. */
+  async findRover() {
+    if (this.state.isFindingRover) {
+      return;
+    }
+
+    this.setState({
+      isFindingRover: true,
+      discoveryMessage: 'Searching the local network for RE-RASSOR…',
+      discoveredRovers: [],
+      discoveryModalVisible: true,
+    });
+
+    const rovers = await findRovers();
+    this.setState({
+      isFindingRover: false,
+      discoveryMessage: rovers.length
+        ? `${rovers.length} rover${rovers.length === 1 ? '' : 's'} found.`
+        : 'No rover found on the RE-RASSOR network.',
+      discoveredRovers: rovers,
+      discoveryModalVisible: true,
+    });
+  }
+
+  async selectDiscoveredRover(ip) {
+    this.setState({ ip, discoveryModalVisible: false });
+    await AsyncStorage.setItem('myIp', ip);
+  }
+
   render() {
     // I.e., don't do full render if font is still loading...
     if (this.state.isLoading) {
@@ -126,6 +160,47 @@ export default class IPConnect extends React.Component {
     return (
       <KeyboardAwareScrollView contentContainerStyle={[ControllerStyle.keyboardAwareScrollView]}>
         <View style={ControllerStyle.screenLayout}>
+
+          <Modal
+            transparent={true}
+            animationType="fade"
+            visible={this.state.discoveryModalVisible}
+            onRequestClose={() => this.setState({ discoveryModalVisible: false })}
+          >
+            <View style={ControllerStyle.discoveryModalBackdrop}>
+              <View style={ControllerStyle.discoveryModalCard}>
+                <Text style={ControllerStyle.discoveryModalTitle}>
+                  {this.state.isFindingRover ? 'FINDING ROVER IP ADDRESS' : 'AVAILABLE ROVERS'}
+                </Text>
+                {this.state.isFindingRover ? (
+                  <Text style={ControllerStyle.noRoversText}>
+                    Scanning the local Wi-Fi network for available RE-RASSOR rovers…
+                  </Text>
+                ) : this.state.discoveredRovers.length ? (
+                  this.state.discoveredRovers.map((ip) => (
+                    <TouchableOpacity
+                      key={ip}
+                      style={ControllerStyle.discoveredRoverRow}
+                      onPress={() => this.selectDiscoveredRover(ip)}
+                    >
+                      <Text style={ControllerStyle.discoveredRoverText}>RE-RASSOR ({ip})</Text>
+                      <Text style={ControllerStyle.discoveredRoverUseText}>USE</Text>
+                    </TouchableOpacity>
+                  ))
+                ) : (
+                  <Text style={ControllerStyle.noRoversText}>
+                    No rover was found. Confirm that this device and the rover are on the same Wi-Fi network.
+                  </Text>
+                )}
+                <TouchableOpacity
+                  style={ControllerStyle.discoveryModalCloseButton}
+                  onPress={() => this.setState({ discoveryModalVisible: false })}
+                >
+                  <Text style={ControllerStyle.discoveryModalCloseText}>CLOSE</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
 
           <StatusBar backgroundColor="#2E3030" barStyle="dark-content" />
 
@@ -137,13 +212,13 @@ export default class IPConnect extends React.Component {
           </View>
 
           {/* Body container. */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <View style={ControllerStyle.connectionBody}>
 
             {/* FSI logo. */}
-            <Image source={logo} style={ControllerStyle.fsiLogo} />
+            <Image source={logo} style={[ControllerStyle.fsiLogo, ControllerStyle.connectionFsiLogo]} />
 
             {/* Inner-body container. */}
-            <View backgroundColor="#4a4d4e" width="70%" style={ControllerStyle.containerTwo} >
+            <View style={[ControllerStyle.containerTwo, ControllerStyle.connectionCard]} >
 
               {/* Message to user. */}
               <Text
@@ -158,7 +233,7 @@ export default class IPConnect extends React.Component {
                   color: '#fff'
                 }}
               >
-                Please enter the IP address of the RE-RASSOR cart:
+                Connect to your RE-RASSOR rover
               </Text>
 
               {/* Loading dots animation. */}
@@ -173,42 +248,79 @@ export default class IPConnect extends React.Component {
               {/* Text input for IP + port. */}
               <TextInput
                 ref="myInput"
-                fontSize={normalize(45, 1.8)}
-                style={ControllerStyle.ipInputBox}
+                fontSize={normalize(38, 1.2)}
+                style={[ControllerStyle.ipInputBox, ControllerStyle.connectionIpInput]}
                 onChangeText={(text) => this.changeIP(text)}
                 value={this.state.ip}
                 marginVertical={8}
                 disableFullscreenUI={true}
                 selectionColor={'white'}
+                placeholder="192.168.1.2:8080"
+                placeholderTextColor="#aeb5b5"
               />
 
-              {/* Connect button. */}
               <TouchableOpacity
-                activeOpacity={0.95}
-                backgroundColor="#FFFFFF"
-                style={[ControllerStyle.connectButton]}
-                onPress={() => {
-                  this.animation.current?.play();
-                  this.redirectBasedOnReachability();
-                }}
+                activeOpacity={0.88}
+                disabled={this.state.isFindingRover}
+                style={[
+                  ControllerStyle.findRoverButton,
+                  this.state.isFindingRover && ControllerStyle.findRoverButtonDisabled
+                ]}
+                onPress={() => this.findRover()}
               >
-                <Text style={[ControllerStyle.connectButtonText]}>
-                  CONNECT
+                <Text style={ControllerStyle.findRoverButtonText}>
+                  {this.state.isFindingRover ? 'SEARCHING…' : 'FIND ROVER'}
                 </Text>
-                <Image source={arrowright} style={ControllerStyle.arrowRight} />
               </TouchableOpacity>
+
+              <Text
+                accessibilityLiveRegion="polite"
+                style={ControllerStyle.discoveryMessage}
+              >
+                {this.state.discoveryMessage || 'Find Rover checks the supported local rover addresses.'}
+              </Text>
+
+              <View style={ControllerStyle.connectionActionRow}>
+                {/* Connect button. */}
+                <TouchableOpacity
+                  activeOpacity={0.95}
+                  backgroundColor="#FFFFFF"
+                  style={[ControllerStyle.connectButton, ControllerStyle.primaryConnectButton]}
+                  onPress={() => {
+                    this.animation.current?.play();
+                    this.redirectBasedOnReachability();
+                  }}
+                >
+                  <Text style={[ControllerStyle.connectButtonText, ControllerStyle.connectionConnectText]}>
+                    CONNECT
+                  </Text>
+                  <Image source={arrowright} style={ControllerStyle.arrowRight} />
+                </TouchableOpacity>
+
+                {/* Kept beside Connect so it is always visible on short landscape screens. */}
+                <TouchableOpacity
+                  activeOpacity={0.88}
+                  accessibilityLabel="Open control interface in offline preview mode"
+                  style={ControllerStyle.offlinePreviewButton}
+                  onPress={() => this.props.navigation.navigate('Controller Screen', { offlineMode: true })}
+                >
+                  <Text style={ControllerStyle.offlinePreviewButtonText}>
+                    OPEN CONTROLS{`\n`}OFFLINE
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
             </View>
 
             {/* Help button. */}
             <TouchableOpacity
               activeOpacity={0.95}
-              style={[ControllerStyle.buttonContainer]}
+              style={[ControllerStyle.buttonContainer, ControllerStyle.connectionHelpButton]}
               onPress={() => {
                 this.props.navigation.navigate('Connection Help Screen');
               }}
             >
-              <Text adjustsFontSizeToFit={true} numberOfLines={1} style={[ControllerStyle.buttonText]}>
+              <Text adjustsFontSizeToFit={true} numberOfLines={1} style={[ControllerStyle.buttonText, ControllerStyle.connectionHelpButtonText]}>
                 Help
               </Text>
             </TouchableOpacity>
