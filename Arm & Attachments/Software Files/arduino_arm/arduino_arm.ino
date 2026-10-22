@@ -1,6 +1,6 @@
 #include <SimpleFOC.h>
-#include "controlfoc.h"
-#include "commands.h"
+#include "src/controlfoc.h"
+#include "src/commands.h"
 
 // ================= ARM SPEED CONFIG ==================
 
