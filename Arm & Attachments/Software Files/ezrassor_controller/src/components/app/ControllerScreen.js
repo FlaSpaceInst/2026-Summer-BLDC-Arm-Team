@@ -380,11 +380,8 @@ export default class ControllerScreen extends React.Component {
 
             {/* Forwards button. */}
             <TouchableOpacity style={ControllerStyle.upAndDownDPad}
-              onPressIn={() => {
+              onPress={() => {
                 this.sendOperation(Robot.WHEELS, WheelOperation.FORWARD);
-              }}
-              onPressOut={() => {
-                this.sendOperation(Robot.WHEELS, WheelOperation.STOP);
               }}
             >
               <FontAwesome name="chevron-up" size={50} color="#fff" />
@@ -395,23 +392,26 @@ export default class ControllerScreen extends React.Component {
 
               {/* Left button. */}
               <TouchableOpacity style={ControllerStyle.dPadLeft}
-                onPressIn={() => {
+                onPress={() => {
                   this.sendOperation(Robot.WHEELS, WheelOperation.LEFT);
-                }}
-                onPressOut={() => {
-                  this.sendOperation(Robot.WHEELS, WheelOperation.STOP);
                 }}
               >
                 <FontAwesome name="chevron-left" size={50} color="#fff" />
               </TouchableOpacity>
 
+              {/* Center stop button: reset wheel speed to zero. */}
+              <TouchableOpacity
+                accessibilityLabel="Stop wheels"
+                style={{ width: 58, height: 58, alignSelf: 'center', marginHorizontal: 4, backgroundColor: '#5D6061', borderRadius: 4, elevation: 5, justifyContent: 'center', alignItems: 'center' }}
+                onPress={() => { this.sendOperation(Robot.WHEELS, WheelOperation.STOP); }}
+              >
+                <FontAwesome name="stop" size={24} color="#fff" />
+              </TouchableOpacity>
+
               {/* Right button. */}
               <TouchableOpacity style={ControllerStyle.dPadRight}
-                onPressIn={() => {
+                onPress={() => {
                   this.sendOperation(Robot.WHEELS, WheelOperation.RIGHT);
-                }}
-                onPressOut={() => {
-                  this.sendOperation(Robot.WHEELS, WheelOperation.STOP);
                 }}
               >
                 <FontAwesome name="chevron-right" size={50} color="#fff" />
@@ -423,11 +423,8 @@ export default class ControllerScreen extends React.Component {
 
             {/* Backwards button. */}
             <TouchableOpacity style={ControllerStyle.upAndDownDPad}
-              onPressIn={() => {
+              onPress={() => {
                 this.sendOperation(Robot.WHEELS, WheelOperation.BACKWARD);
-              }}
-              onPressOut={() => {
-                this.sendOperation(Robot.WHEELS, WheelOperation.STOP);
               }}
             >
               <FontAwesome name="chevron-down" size={50} color="#fff" />
@@ -447,6 +444,7 @@ export default class ControllerScreen extends React.Component {
                   {/* Raise left-shoulder button. */}
                   <View>
                     <TouchableOpacity
+                      style={ControllerStyle.armMovementButton}
                       onPressIn={() => {
                         this.sendOperation(Robot.FRONTARM, ShoulderOperation.RAISE);
                       }}
@@ -454,13 +452,14 @@ export default class ControllerScreen extends React.Component {
                         this.sendOperation(Robot.FRONTARM, ShoulderOperation.STOP);
                       }}
                     >
-                      <FontAwesome name="arrow-circle-up" size={50} color="#fff" />
+                      <FontAwesome name="chevron-up" size={50} color="#fff" />
                     </TouchableOpacity>
                   </View>
 
                   {/* Lower left-shoulder button. */}
                   <View style={{ marginHorizontal: 15 }}>
                     <TouchableOpacity
+                      style={ControllerStyle.armMovementButton}
                       onPressIn={() => {
                         this.sendOperation(Robot.FRONTARM, ShoulderOperation.LOWER);
                       }}
@@ -468,7 +467,7 @@ export default class ControllerScreen extends React.Component {
                         this.sendOperation(Robot.FRONTARM, ShoulderOperation.STOP);
                       }}
                     >
-                      <FontAwesome name="arrow-circle-down" size={50} color="#fff" />
+                      <FontAwesome name="chevron-down" size={50} color="#fff" />
                     </TouchableOpacity>
                   </View>
 
@@ -479,6 +478,7 @@ export default class ControllerScreen extends React.Component {
                   {/* Raise right-shoulder button. */}
                   <View style={{ marginHorizontal: 15 }}>
                     <TouchableOpacity
+                      style={ControllerStyle.armMovementButton}
                       onPressIn={() => {
                         this.sendOperation(Robot.BACKARM, ShoulderOperation.RAISE);
                       }}
@@ -486,13 +486,14 @@ export default class ControllerScreen extends React.Component {
                         this.sendOperation(Robot.BACKARM, ShoulderOperation.STOP);
                       }}
                     >
-                      <FontAwesome name="arrow-circle-up" size={50} color="#fff" />
+                      <FontAwesome name="chevron-up" size={50} color="#fff" />
                     </TouchableOpacity>
                   </View>
 
                   {/* Lower right-shoulder button. */}
                   <View>
                     <TouchableOpacity
+                      style={ControllerStyle.armMovementButton}
                       onPressIn={() => {
                         this.sendOperation(Robot.BACKARM, ShoulderOperation.LOWER);
                       }}
@@ -500,7 +501,7 @@ export default class ControllerScreen extends React.Component {
                         this.sendOperation(Robot.BACKARM, ShoulderOperation.STOP);
                       }}
                     >
-                      <FontAwesome name="arrow-circle-down" size={50} color="#fff" />
+                      <FontAwesome name="chevron-down" size={50} color="#fff" />
                     </TouchableOpacity>
                   </View>
 
@@ -522,6 +523,7 @@ export default class ControllerScreen extends React.Component {
                   {/* Dump left-bucket button. */}
                   <View>
                     <TouchableOpacity
+                      style={ControllerStyle.armMovementButton}
                       onPressIn={() => {
                         this.sendOperation(
                           Robot.FRONTDRUM,
@@ -539,6 +541,7 @@ export default class ControllerScreen extends React.Component {
                   {/* Dig left-bucket button. */}
                   <View style={{ marginHorizontal: 15 }}>
                     <TouchableOpacity
+                      style={ControllerStyle.armMovementButton}
                       onPressIn={() => {
                         this.sendOperation(
                           Robot.FRONTDRUM,
@@ -560,6 +563,7 @@ export default class ControllerScreen extends React.Component {
                   {/* Dig right-bucket button. */}
                   <View style={{ marginHorizontal: 15 }}>
                     <TouchableOpacity
+                      style={ControllerStyle.armMovementButton}
                       onPressIn={() => {
                         this.sendOperation(
                           Robot.BACKDRUM,
@@ -577,6 +581,7 @@ export default class ControllerScreen extends React.Component {
                   {/* Dump right-bucket button. */}
                   <View>
                     <TouchableOpacity
+                      style={ControllerStyle.armMovementButton}
                       onPressIn={() => {
                         this.sendOperation(
                           Robot.BACKDRUM,

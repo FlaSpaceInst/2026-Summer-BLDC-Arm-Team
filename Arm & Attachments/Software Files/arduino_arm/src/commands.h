@@ -1,6 +1,6 @@
 // File entirely to hold command enumeration, for ease of updating
-#ifndef COMMANDS_H
-#define COMMANDS_H
+#ifndef FULL_2026_COMMANDS_H
+#define FULL_2026_COMMANDS_H
 
 // Command hex ids
 enum COMMANDS {
