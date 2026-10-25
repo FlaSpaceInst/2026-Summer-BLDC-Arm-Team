@@ -39,6 +39,9 @@ DRV8825 armShoulder(E0_STEP_PIN, E0_DIR_PIN, E0_ENABLE_PIN, STEPS_PER_REV);
 // arm elbow: E1
 DRV8825 armElbow(E1_STEP_PIN, E1_DIR_PIN, E1_ENABLE_PIN, STEPS_PER_REV);
 
+// global checker for halted
+int halt = 0;
+
 byte last_command = STOP;
 
 void setup() {
