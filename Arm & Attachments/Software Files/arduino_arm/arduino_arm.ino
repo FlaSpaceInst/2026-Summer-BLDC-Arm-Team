@@ -19,6 +19,10 @@
 
 // =====================================================
 
+// Switch if either motor is rotating the wrong way
+#define DIR_SHOULDER true
+#define DIR_ELBOW true
+
 // extruder 1 (arm shoulder)
 #define E0_STEP_PIN 26
 #define E0_DIR_PIN 28
