@@ -13,35 +13,40 @@
 // effectorTimeEase: time (ms) the effector spends at eased speed after starting to ease
 #define EFFECTOR_TIME_EASE 250
 
+/* moved to arduino_arm (uncomment if shoulder/elbow are switched back to BLDC)
 // armSpd: speed (RPM) of the arm shoulder & elbow
-#define ARM_SPD 20.0
+#define ARM_SPD 20.0*/
 
 // =====================================================
 
 // switch between -1 and 1 if motors are rotating the wrong way
 #define DIR_EFFECTOR 1
+/* moved to arduino_arm (uncomment if shoulder/elbow are switched back to BLDC)
 #define DIR_SHOULDER 1
-#define DIR_ELBOW 1
+#define DIR_ELBOW 1*/
 
 // motor and driver definitions
 // the first 3 numbers of the driver definitions are the PWM pins those motors should be connected to
 // the fourth is NOT_SET because we aren't using enable pins for the BLDCs
 BLDCMotor motor_effector(POLE_PAIRS);
 BLDCDriver3PWM driver_effector(10, 9, 8, NOT_SET);
+/* moved to arduino_arm (uncomment if shoulder/elbow are switched back to BLDC)
 BLDCMotor motor_shoulder(POLE_PAIRS);
 BLDCDriver3PWM driver_shoulder(7, 6, 5, NOT_SET);
 BLDCMotor motor_elbow(POLE_PAIRS);
-BLDCDriver3PWM driver_elbow(4, 3, 2, NOT_SET);
+BLDCDriver3PWM driver_elbow(4, 3, 2, NOT_SET);*/
 
 // target velocities (RPM)
 float v_target_effector = 0.0;
+/* moved to arduino_arm (uncomment if shoulder/elbow are switched back to BLDC)
 float v_target_shoulder = 0.0;
-float v_target_elbow = 0.0;
+float v_target_elbow = 0.0;*/
 
 // current velocities (RPM)
 float v_curr_effector = 0.0;
+/* moved to arduino_arm (uncomment if shoulder/elbow are switched back to BLDC)
 float v_curr_shoulder = 0.0;
-float v_curr_elbow = 0.0;
+float v_curr_elbow = 0.0;*/
 
 // global checkers for stopping and halted
 int stop = 0;
@@ -79,7 +84,7 @@ void setup() {
   motor_effector.voltage_limit = SUPPLY_VOLTAGE;
   motor_effector.init();
   motor_effector.enable();
-
+  /* moved to arduino_arm (uncomment if shoulder/elbow are switched back to BLDC)
   // arm shoulder initial
   driver_shoulder.voltage_power_supply = SUPPLY_VOLTAGE;
   driver_shoulder.voltage_limit = DRIVER_VOLTAGE_LIMIT;
@@ -103,6 +108,7 @@ void setup() {
   motor_elbow.voltage_limit = SUPPLY_VOLTAGE;
   motor_elbow.init();
   motor_elbow.enable();
+  */
 }
 
 void loop() {
@@ -148,6 +154,7 @@ void update_motors() {
   else if (v_target_effector>v_curr_effector) {
     v_curr_effector = min(v_target_effector, v_curr_effector + accel_change);
   }
+  /* moved to arduino_arm (uncomment if shoulder/elbow are switched back to BLDC)
   // change shoulder speed
   if (v_target_shoulder<v_curr_shoulder) {
     v_curr_shoulder = max(v_target_shoulder, v_curr_shoulder - accel_change);
@@ -161,15 +168,16 @@ void update_motors() {
   }
   else if (v_target_elbow>v_curr_elbow) {
     v_curr_elbow = min(v_target_elbow, v_curr_elbow + accel_change);
-  }
+  }*/
   
   // move motors
   motor_effector.loopFOC();
   motor_effector.move(DIR_EFFECTOR * v_curr_effector);
+  /* moved to arduino_arm (uncomment if shoulder/elbow are switched back to BLDC)
   motor_shoulder.loopFOC();
   motor_shoulder.move(DIR_SHOULDER * v_curr_shoulder);
   motor_elbow.loopFOC();
-  motor_elbow.move(DIR_ELBOW * v_curr_elbow);
+  motor_elbow.move(DIR_ELBOW * v_curr_elbow);*/
 }
 
 // checks for commands being sent over the Serial port to the arduino/Ramps board
@@ -198,57 +206,69 @@ void read_serial() {
         break;
       
       case ARM_FWD_ELBOW:
-        v_target_elbow = ARM_SPD;
+        // moved to arduino_arm (uncomment if shoulder/elbow are switched back to BLDC)
+        // v_target_elbow = ARM_SPD;
         break;
       
       case ARM_REV_ELBOW:
-        v_target_elbow = -ARM_SPD;
+        // moved to arduino_arm (uncomment if shoulder/elbow are switched back to BLDC)
+        // v_target_elbow = -ARM_SPD;
         break;
       
       case ARM_STOP_ELBOW:
-        v_target_elbow = 0.0;
+        // moved to arduino_arm (uncomment if shoulder/elbow are switched back to BLDC)
+        // v_target_elbow = 0.0;
         break;
       
       case ARM_FWD_SHOULDER:
-        v_target_shoulder = ARM_SPD;
+        // moved to arduino_arm (uncomment if shoulder/elbow are switched back to BLDC)
+        // v_target_shoulder = ARM_SPD;
         break;
       
       case ARM_REV_SHOULDER:
-        v_target_shoulder = -ARM_SPD;
+        // moved to arduino_arm (uncomment if shoulder/elbow are switched back to BLDC)
+        // v_target_shoulder = -ARM_SPD;
         break;
       
       case ARM_STOP_SHOULDER:
-        v_target_shoulder = 0.0;
+        // moved to arduino_arm (uncomment if shoulder/elbow are switched back to BLDC)
+        // v_target_shoulder = 0.0;
         break;
 
       case ARM_FWD_BOTH:
-        v_target_elbow = ARM_SPD;
-        v_target_shoulder = ARM_SPD;
+        // moved to arduino_arm (uncomment if shoulder/elbow are switched back to BLDC)
+        // v_target_elbow = ARM_SPD;
+        // v_target_shoulder = ARM_SPD;
         break;
       
       case ARM_REV_BOTH:
-        v_target_elbow = -ARM_SPD;
-        v_target_shoulder = -ARM_SPD;
+        // moved to arduino_arm (uncomment if shoulder/elbow are switched back to BLDC)
+        // v_target_elbow = -ARM_SPD;
+        // v_target_shoulder = -ARM_SPD;
         break;
       
       case ARM_STOP_BOTH:
-        v_target_elbow = 0.0;
-        v_target_shoulder = 0.0;
+        // moved to arduino_arm (uncomment if shoulder/elbow are switched back to BLDC)
+        // v_target_elbow = 0.0;
+        // v_target_shoulder = 0.0;
         break;
 
       case ARM_STOP_ALL:
         //armBase.set_speed(0);
-        v_target_elbow = 0.0;
-        v_target_shoulder = 0.0;
+        // moved to arduino_arm (uncomment if shoulder/elbow are switched back to BLDC)
+        // v_target_elbow = 0.0;
+        // v_target_shoulder = 0.0;
         v_target_effector = 0.0;
         break;
       case HALT:
         halt = 1;
-        v_target_elbow = 0.0;
-        v_target_shoulder = 0.0;
+        // moved to arduino_arm (uncomment if shoulder/elbow are switched back to BLDC)
+        // v_target_elbow = 0.0;
+        // v_target_shoulder = 0.0;
         v_target_effector = 0.0;
-        v_curr_elbow = 0.0;
-        v_curr_shoulder = 0.0;
+        // moved to arduino_arm (uncomment if shoulder/elbow are switched back to BLDC)
+        // v_curr_elbow = 0.0;
+        // v_curr_shoulder = 0.0;
         v_curr_effector = 0.0;
         break;
 
@@ -296,9 +316,10 @@ int velSign (float velInput) {
 // The stop function to be called to stop the motors
 void Stop() {
   v_target_effector = 0.0;
-  v_target_shoulder = 0.0;
-  v_target_elbow = 0.0;
-  if (v_curr_effector == 0.0 && v_curr_shoulder == 0.0 && v_curr_elbow == 0.0) {
+  // moved to arduino_arm (uncomment if shoulder/elbow are switched back to BLDC)
+  // v_target_shoulder = 0.0;
+  // v_target_elbow = 0.0;
+  if (v_curr_effector == 0.0 /*&& v_curr_shoulder == 0.0 && v_curr_elbow == 0.0*/) {
     stop = 0;
   }
 }
