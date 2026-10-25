@@ -66,7 +66,9 @@ void setup() {
 }
 
 void loop() {
-  read_serial();
+  if (halt==0) {
+    read_serial();
+  }
 
   update_motors();
 }
