@@ -92,43 +92,57 @@ void read_serial() {
         break;
       
       case ARM_FWD_ELBOW:
-        //TODO
+        armElbow.set_direction(DIR_ELBOW);
+        armElbow.set_speed(ARM_SPD);
         break;
       
       case ARM_REV_ELBOW:
-        //TODO
+        armElbow.set_direction(!DIR_ELBOW);
+        armElbow.set_speed(ARM_SPD);
         break;
       
       case ARM_STOP_ELBOW:
-        //TODO
+        armElbow.set_speed(0);
         break;
 
       case ARM_FWD_SHOULDER:
-        //TODO
+        armShoulder.set_direction(DIR_SHOULDER);
+        armShoulder.set_speed(ARM_SPD);
         break;
 
       case ARM_REV_SHOULDER:
-        //TODO
+        armShoulder.set_direction(!DIR_SHOULDER);
+        armShoulder.set_speed(ARM_SPD);
         break;
 
       case ARM_STOP_SHOULDER:
-        //TODO
+        armShoulder.set_speed(0);
         break;
 
       case ARM_FWD_BOTH:
-        //TODO
+        armShoulder.set_direction(DIR_SHOULDER);
+        armShoulder.set_speed(ARM_SPD);
+        armElbow.set_direction(DIR_ELBOW);
+        armElbow.set_speed(ARM_SPD);
         break;
 
       case ARM_REV_BOTH:
-        //TODO
+        armShoulder.set_direction(!DIR_SHOULDER);
+        armShoulder.set_speed(ARM_SPD);
+        armElbow.set_direction(!DIR_ELBOW);
+        armElbow.set_speed(ARM_SPD);
         break;
 
       case ARM_STOP_BOTH:
-        //TODO
+        armShoulder.set_speed(0);
+        armElbow.set_speed(0);
         break;
 
       case ARM_STOP_ALL:
-        //TODO
+        //armBase.set_speed(0);
+        armShoulder.set_speed(0);
+        armElbow.set_speed(0);
+        // Also stops effector
         break;
 
       case HALT:
