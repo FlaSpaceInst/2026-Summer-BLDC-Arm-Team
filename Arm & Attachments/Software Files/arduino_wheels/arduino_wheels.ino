@@ -239,26 +239,29 @@ void loop() {
 
   time1 = millis();
 
-  read_serial();
-
-  //checkEffectorEasing();
-
-  // Controlls the slow start for the stepper motor checks if a certain amount of miliseconds have passed and if we want to speed up
-  if (time1 - time >= ACCEL_INTERVAL && on == 1) {
-    Speedup(ls, rs);
-    time=time1;
+  if (halt==0) {
+  
+    read_serial();
+  
+    //checkEffectorEasing();
+  
+    // Controlls the slow start for the stepper motor checks if a certain amount of miliseconds have passed and if we want to speed up
+    if (time1 - time >= ACCEL_INTERVAL && on == 1) {
+      Speedup(ls, rs);
+      time=time1;
+    }
+    // controlls the soft stop for the stepper motor checks if a certain amount of have passed and if we want to stop
+    if (time1 - time >= ACCEL_INTERVAL && stop == 1) {
+      Stop();
+      time=time1;
+    }
+    // call stop function if we get stuck in a loop and it wont slow down after 2500 miliseconds
+    /*if (timeout == 750) {
+      stop = 1;
+      on = 0;
+      Stop();
+    }*/
   }
-  // controlls the soft stop for the stepper motor checks if a certain amount of have passed and if we want to stop
-  if (time1 - time >= ACCEL_INTERVAL && stop == 1) {
-    Stop();
-    time=time1;
-  }
-  // call stop function if we get stuck in a loop and it wont slow down after 2500 miliseconds
-  /*if (timeout == 750) {
-    stop = 1;
-    on = 0;
-    Stop();
-  }*/
 
   update_motors();
 }
