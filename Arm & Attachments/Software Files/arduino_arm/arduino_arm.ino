@@ -29,4 +29,8 @@
 #define E1_DIR_PIN 34
 #define E1_ENABLE_PIN 30
 
-//TODO
+// arm shoulder: E0
+DRV8825 armShoulder(E0_STEP_PIN, E0_DIR_PIN, E0_ENABLE_PIN, STEPS_PER_REV);
+
+// arm elbow: E1
+DRV8825 armElbow(E1_STEP_PIN, E1_DIR_PIN, E1_ENABLE_PIN, STEPS_PER_REV);
