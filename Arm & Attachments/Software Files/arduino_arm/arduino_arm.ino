@@ -57,3 +57,27 @@ void setup() {
   armElbow.set_direction(false);
   armElbow.set_speed(0);
 }
+
+void loop() {
+  read_serial();
+
+  update_motors();
+}
+
+// updates the motors
+void update_motors() {
+  armShoulder.update();
+  armElbow.update();
+}
+
+// checks for commands being sent over the Serial port to the arduino/Ramps board
+void read_serial() {
+  if (Serial.available()) {
+    
+    last_command = Serial.read();
+
+    switch (last_command) {
+      //TODO
+    }
+  }
+}
