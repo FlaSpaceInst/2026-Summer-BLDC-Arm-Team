@@ -34,3 +34,26 @@ DRV8825 armShoulder(E0_STEP_PIN, E0_DIR_PIN, E0_ENABLE_PIN, STEPS_PER_REV);
 
 // arm elbow: E1
 DRV8825 armElbow(E1_STEP_PIN, E1_DIR_PIN, E1_ENABLE_PIN, STEPS_PER_REV);
+
+byte last_command = STOP;
+
+void setup() {
+
+  // use USB on serial 115200
+  // I think this actually just activates the serial with a bitrate of 115200? - Lucas
+  Serial.begin(115200);
+
+
+  // set up the LED for ability to see if recieving commands
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, LOW);
+
+  // arm shoulder/elbow initial
+  armShoulder.set_enabled(true);
+  armShoulder.set_direction(false);
+  armShoulder.set_speed(0);
+
+  armElbow.set_enabled(true);
+  armElbow.set_direction(false);
+  armElbow.set_speed(0);
+}
