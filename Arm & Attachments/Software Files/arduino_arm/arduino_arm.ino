@@ -14,5 +14,7 @@
 // =====================================================
 
 // ============ SPEED & ACCELERATION CONFIG ============
+// armSpd: speed (RPM) of the arm shoulder & elbow
+#define ARM_SPD 20 
 
 //TODO
