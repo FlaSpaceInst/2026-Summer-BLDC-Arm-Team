@@ -86,7 +86,75 @@ void read_serial() {
     last_command = Serial.read();
 
     switch (last_command) {
-      //TODO
+      case STOP:
+        armShoulder.set_speed(0);
+        armElbow.set_speed(0);
+        break;
+      
+      case ARM_FWD_ELBOW:
+        //TODO
+        break;
+      
+      case ARM_REV_ELBOW:
+        //TODO
+        break;
+      
+      case ARM_STOP_ELBOW:
+        //TODO
+        break;
+
+      case ARM_FWD_SHOULDER:
+        //TODO
+        break;
+
+      case ARM_REV_SHOULDER:
+        //TODO
+        break;
+
+      case ARM_STOP_SHOULDER:
+        //TODO
+        break;
+
+      case ARM_FWD_BOTH:
+        //TODO
+        break;
+
+      case ARM_REV_BOTH:
+        //TODO
+        break;
+
+      case ARM_STOP_BOTH:
+        //TODO
+        break;
+
+      case ARM_STOP_ALL:
+        //TODO
+        break;
+
+      case HALT:
+        halt = 1;
+        armShoulder.set_speed(0);
+        armElbow.set_speed(0);
+        break;
+
+      // All of these are handled fully by other arduinos
+      case FWD:
+      case REV:
+      case LEFT:
+      case RIGHT:
+      case ARM_OPEN_EFFECTOR:
+      case ARM_CLOSE_EFFECTOR:
+      case ARM_STOP_EFFECTOR:
+      case ARM_ROTATE_CW:
+      case ARM_ROTATE_CCW:
+      case ARM_STOP_ROTATE:
+        break;
+
+      default:
+        digitalWrite(LED_BUILTIN, LOW);
+        armShoulder.set_speed(0);
+        armElbow.set_speed(0);
+        break;
     }
   }
 }
