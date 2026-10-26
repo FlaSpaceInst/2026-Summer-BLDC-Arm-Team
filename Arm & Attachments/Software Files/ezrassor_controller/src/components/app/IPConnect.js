@@ -18,7 +18,7 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view
 import { findRovers, isIpReachable } from '../../functionality/connection';
 import { normalize } from '../../functionality/display';
 
-const DEFAULT_IP = '192.168.1.2:8080';
+const DEFAULT_IP = '192.168.10.3:5000';
 
 /**
  * React component for the connect-to-ip screen.
@@ -255,7 +255,7 @@ export default class IPConnect extends React.Component {
                 marginVertical={8}
                 disableFullscreenUI={true}
                 selectionColor={'white'}
-                placeholder="192.168.1.2:8080"
+                placeholder="192.168.10.3:5000"
                 placeholderTextColor="#aeb5b5"
               />
 
