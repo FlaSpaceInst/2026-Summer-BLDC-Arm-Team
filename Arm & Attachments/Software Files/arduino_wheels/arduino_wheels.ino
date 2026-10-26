@@ -1,5 +1,5 @@
-#include "DRV8825.h"
-#include "commands.h"
+#include "src/DRV8825.h"
+#include "src/commands.h"
 // For RAMPS 1.4
 /*
 
@@ -24,13 +24,13 @@ little wheel = 15 1/2
 // maxSpeed: Base RPM value. Actual speeds are 1x, 2x, 3x this value
 //   - With 1/32 microstepping: try 30-60 RPM
 //   - With 1/4 microstepping: can go much higher (100-200+ RPM)
-#define MAX_SPEED 60
+#define MAX_SPEED 1
 
 // accelInterval: Milliseconds between acceleration steps (lower = faster accel)
 //   - 750 = slow/smooth acceleration (original)
 //   - 200-300 = moderate acceleration
 //   - 50-100 = quick acceleration
-#define ACCEL_INTERVAL 750
+#define ACCEL_INTERVAL 450
 
 // accelIncrement: Starting RPM increase per step
 #define ACCEL_INCREMENT 5
@@ -239,26 +239,29 @@ void loop() {
 
   time1 = millis();
 
-  read_serial();
-
-  //checkEffectorEasing();
-
-  // Controlls the slow start for the stepper motor checks if a certain amount of miliseconds have passed and if we want to speed up
-  if (time1 - time >= ACCEL_INTERVAL && on == 1) {
-    Speedup(ls, rs);
-    time=time1;
+  if (halt==0) {
+  
+    read_serial();
+  
+    //checkEffectorEasing();
+  
+    // Controlls the slow start for the stepper motor checks if a certain amount of miliseconds have passed and if we want to speed up
+    if (time1 - time >= ACCEL_INTERVAL && on == 1) {
+      Speedup(ls, rs);
+      time=time1;
+    }
+    // controlls the soft stop for the stepper motor checks if a certain amount of have passed and if we want to stop
+    if (time1 - time >= ACCEL_INTERVAL && stop == 1) {
+      Stop();
+      time=time1;
+    }
+    // call stop function if we get stuck in a loop and it wont slow down after 2500 miliseconds
+    /*if (timeout == 750) {
+      stop = 1;
+      on = 0;
+      Stop();
+    }*/
   }
-  // controlls the soft stop for the stepper motor checks if a certain amount of have passed and if we want to stop
-  if (time1 - time >= ACCEL_INTERVAL && stop == 1) {
-    Stop();
-    time=time1;
-  }
-  // call stop function if we get stuck in a loop and it wont slow down after 2500 miliseconds
-  /*if (timeout == 750) {
-    stop = 1;
-    on = 0;
-    Stop();
-  }*/
 
   update_motors();
 }
@@ -281,21 +284,21 @@ void update_motors() {
 void read_serial() {
   if (Serial.available()) {
     
-    last_command = Serial.read();
+    // last_command = Serial.read();
     
     // The below comments are for debugging, comment the line above and decomment the below to debug [ctrl + /]
 
-    // String command = Serial.readStringUntil('\n');
-    // if (command == "FWD")
-    //   last_command = FWD;
-    // if (command == "REV")
-    //   last_command = REV;
-    // if (command == "RIGHT")
-    //   last_command = RIGHT;
-    // if (command == "LEFT")
-    //   last_command = LEFT;
-    // if (command == "STOP")
-    //   last_command = STOP;
+    String command = Serial.readStringUntil('\n');
+    if (command == "FWD")
+      last_command = FWD;
+    if (command == "REV")
+      last_command = REV;
+    if (command == "RIGHT")
+      last_command = RIGHT;
+    if (command == "LEFT")
+      last_command = LEFT;
+    if (command == "STOP")
+      last_command = STOP;
     
     switch (last_command) {
       case STOP:
