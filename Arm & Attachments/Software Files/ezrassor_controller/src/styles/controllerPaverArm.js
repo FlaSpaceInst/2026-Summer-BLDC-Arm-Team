@@ -125,6 +125,12 @@ const ControllerStyle = StyleSheet.create({
     flex: 1,
     flexDirection: 'column',
     justifyContent: 'space-between',
+    marginLeft: 10,
+  },
+
+  armControlBackgroundImage: {
+    opacity: 0.28,
+    alignSelf: 'center',
   },
 
   buttonBackground: {
@@ -137,17 +143,17 @@ const ControllerStyle = StyleSheet.create({
     justifyContent: 'center', 
     alignItems: 'center',
     margin: 20,
-    padding: 10
+    paddingVertical: 8,
   },
 
   PaverArmBaseButton: {
     flex: 3,
-    marginLeft: 15,
+    marginLeft: 5,
     borderRadius: 10,
     elevation: 3,
-    backgroundColor: '#2e3030', 
+    backgroundColor: 'rgba(46, 48, 48, 0.84)',
     marginBottom: 10,
-    marginRight: 15,
+    marginRight: 10,
   },
 
   PaverArmBackground: {
@@ -158,6 +164,34 @@ const ControllerStyle = StyleSheet.create({
     marginLeft: 10,
     marginRight: 10,
     flex: 1,
+  },
+
+  cameraPlaceholder: {
+    flex: 1,
+    borderRadius: 10,
+    elevation: 3,
+    backgroundColor: '#2e3030',
+    borderWidth: 1,
+    borderColor: '#4b5050',
+    marginBottom: 10,
+    marginLeft: 10,
+    marginRight: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  cameraPlaceholderTitle: {
+    marginTop: 14,
+    fontFamily: 'NASA',
+    fontSize: 22,
+    color: '#fff',
+  },
+
+  cameraPlaceholderText: {
+    marginTop: 6,
+    fontFamily: 'NASA',
+    fontSize: 14,
+    color: '#9ba4a4',
   },
 
   mainButtonTextVertical: {
@@ -190,6 +224,7 @@ const ControllerStyle = StyleSheet.create({
     fontFamily: 'NASA', 
     color: '#fff',
     textAlign: 'center',
+    paddingTop: 3,
   },
 
   textSmallCenter: {
