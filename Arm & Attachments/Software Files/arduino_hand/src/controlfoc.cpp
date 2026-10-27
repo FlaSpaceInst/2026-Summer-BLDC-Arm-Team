@@ -23,13 +23,16 @@ float RPMtoRads(float rpm)
 contains the input within the upper and lower bounds
 note: for some reason constrain() is really slow
 */
-int clamp(int input, int minimum, int maximum)
+int clamp(int input, int min, int max)
 {
-  if (input < minimum) {
-    return minimum;
-  }
-  if (input > maximum) {
-    return maximum;
-  }
-  return input;
+  return max(min(input, max), min); 
+  // if(input < min)
+  // {
+  //   return min;
+  // }
+  // else if(input > max)
+  // {
+  //   return max;
+  // }
+  // return input;
 }

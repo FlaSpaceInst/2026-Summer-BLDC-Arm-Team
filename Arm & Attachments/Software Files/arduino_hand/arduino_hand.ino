@@ -38,6 +38,7 @@ BLDCDriver3PWM driver_elbow(4, 3, 2, NOT_SET);*/
 
 // target velocities (RPM)
 float v_target_effector = 0.0;
+float gripperSpeed = EFFECTOR_SPD;
 /* moved to arduino_arm (uncomment if shoulder/elbow are switched back to BLDC)
 float v_target_shoulder = 0.0;
 float v_target_elbow = 0.0;*/
@@ -187,18 +188,42 @@ void read_serial() {
     last_command = Serial.read();
 
     switch (last_command) {
+      case GRIPPER_SPEED_SLOW:
+        gripperSpeed = EFFECTOR_SPD / 3.0;
+        if (v_target_effector > 0.0) {
+          v_target_effector = gripperSpeed;
+        } else if (v_target_effector < 0.0) {
+          v_target_effector = -gripperSpeed;
+        }
+        break;
+      case GRIPPER_SPEED_MEDIUM:
+        gripperSpeed = EFFECTOR_SPD * 2.0 / 3.0;
+        if (v_target_effector > 0.0) {
+          v_target_effector = gripperSpeed;
+        } else if (v_target_effector < 0.0) {
+          v_target_effector = -gripperSpeed;
+        }
+        break;
+      case GRIPPER_SPEED_FAST:
+        gripperSpeed = EFFECTOR_SPD;
+        if (v_target_effector > 0.0) {
+          v_target_effector = gripperSpeed;
+        } else if (v_target_effector < 0.0) {
+          v_target_effector = -gripperSpeed;
+        }
+        break;
       case STOP:
         stop = 1;
         break;
       
       case OPEN_EFFECTOR:
         effector_stop_time = time1+EFFECTOR_TIME_FULL;
-        v_target_effector = EFFECTOR_SPD;
+        v_target_effector = gripperSpeed;
         break;
 
       case CLOSE_EFFECTOR:
         effector_stop_time = time1+EFFECTOR_TIME_FULL;
-        v_target_effector = -EFFECTOR_SPD;
+        v_target_effector = -gripperSpeed;
         break;
 
       case STOP_EFFECTOR:
@@ -297,7 +322,7 @@ void checkEffectorEasing() {
       v_target_effector = 0.0;
     }
     else if (time1>effector_stop_time-EFFECTOR_TIME_EASE) {
-      v_target_effector = velSign(v_target_effector) * EFFECTOR_EASE;
+      v_target_effector = velSign(v_target_effector) * min((float)EFFECTOR_EASE, gripperSpeed);
     }
   }
 }

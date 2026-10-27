@@ -43,6 +43,24 @@ DRV8825 armElbow(Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, STEPS_PER_REV);
 int halt = 0;
 
 byte last_command = STOP;
+long shoulderSpeedRpm = ARM_SPD;
+long forearmSpeedRpm = ARM_SPD;
+bool shoulderMoving = false;
+bool forearmMoving = false;
+
+void setShoulderSpeedLevel(int level) {
+  shoulderSpeedRpm = max(1L, (long)(ARM_SPD * level / 3));
+  if (shoulderMoving) {
+    armShoulder.set_speed(shoulderSpeedRpm);
+  }
+}
+
+void setForearmSpeedLevel(int level) {
+  forearmSpeedRpm = max(1L, (long)(ARM_SPD * level / 3));
+  if (forearmMoving) {
+    armElbow.set_speed(forearmSpeedRpm);
+  }
+}
 
 void setup() {
 
@@ -86,59 +104,93 @@ void read_serial() {
     last_command = Serial.read();
 
     switch (last_command) {
+      case SHOULDER_SPEED_SLOW:
+        setShoulderSpeedLevel(1);
+        break;
+      case SHOULDER_SPEED_MEDIUM:
+        setShoulderSpeedLevel(2);
+        break;
+      case SHOULDER_SPEED_FAST:
+        setShoulderSpeedLevel(3);
+        break;
+      case FOREARM_SPEED_SLOW:
+        setForearmSpeedLevel(1);
+        break;
+      case FOREARM_SPEED_MEDIUM:
+        setForearmSpeedLevel(2);
+        break;
+      case FOREARM_SPEED_FAST:
+        setForearmSpeedLevel(3);
+        break;
       case STOP:
+        shoulderMoving = false;
+        forearmMoving = false;
         armShoulder.set_speed(0);
         armElbow.set_speed(0);
         break;
       
       case ARM_FWD_ELBOW:
+        forearmMoving = true;
         armElbow.set_direction(DIR_ELBOW);
-        armElbow.set_speed(ARM_SPD);
+        armElbow.set_speed(forearmSpeedRpm);
         break;
       
       case ARM_REV_ELBOW:
+        forearmMoving = true;
         armElbow.set_direction(!DIR_ELBOW);
-        armElbow.set_speed(ARM_SPD);
+        armElbow.set_speed(forearmSpeedRpm);
         break;
       
       case ARM_STOP_ELBOW:
+        forearmMoving = false;
         armElbow.set_speed(0);
         break;
 
       case ARM_FWD_SHOULDER:
+        shoulderMoving = true;
         armShoulder.set_direction(DIR_SHOULDER);
-        armShoulder.set_speed(ARM_SPD);
+        armShoulder.set_speed(shoulderSpeedRpm);
         break;
 
       case ARM_REV_SHOULDER:
+        shoulderMoving = true;
         armShoulder.set_direction(!DIR_SHOULDER);
-        armShoulder.set_speed(ARM_SPD);
+        armShoulder.set_speed(shoulderSpeedRpm);
         break;
 
       case ARM_STOP_SHOULDER:
+        shoulderMoving = false;
         armShoulder.set_speed(0);
         break;
 
       case ARM_FWD_BOTH:
+        shoulderMoving = true;
+        forearmMoving = true;
         armShoulder.set_direction(DIR_SHOULDER);
-        armShoulder.set_speed(ARM_SPD);
+        armShoulder.set_speed(shoulderSpeedRpm);
         armElbow.set_direction(DIR_ELBOW);
-        armElbow.set_speed(ARM_SPD);
+        armElbow.set_speed(forearmSpeedRpm);
         break;
 
       case ARM_REV_BOTH:
+        shoulderMoving = true;
+        forearmMoving = true;
         armShoulder.set_direction(!DIR_SHOULDER);
-        armShoulder.set_speed(ARM_SPD);
+        armShoulder.set_speed(shoulderSpeedRpm);
         armElbow.set_direction(!DIR_ELBOW);
-        armElbow.set_speed(ARM_SPD);
+        armElbow.set_speed(forearmSpeedRpm);
         break;
 
       case ARM_STOP_BOTH:
+        shoulderMoving = false;
+        forearmMoving = false;
         armShoulder.set_speed(0);
         armElbow.set_speed(0);
         break;
 
       case ARM_STOP_ALL:
+        shoulderMoving = false;
+        forearmMoving = false;
         //armBase.set_speed(0);
         armShoulder.set_speed(0);
         armElbow.set_speed(0);
@@ -146,6 +198,8 @@ void read_serial() {
         break;
 
       case HALT:
+        shoulderMoving = false;
+        forearmMoving = false;
         halt = 1;
         armShoulder.set_speed(0);
         armElbow.set_speed(0);
@@ -156,15 +210,17 @@ void read_serial() {
       case REV:
       case LEFT:
       case RIGHT:
-      case OPEN_EFFECTOR:
-      case CLOSE_EFFECTOR:
-      case STOP_EFFECTOR:
+      case ARM_OPEN_EFFECTOR:
+      case ARM_CLOSE_EFFECTOR:
+      case ARM_STOP_EFFECTOR:
       case ARM_ROTATE_CW:
       case ARM_ROTATE_CCW:
       case ARM_STOP_ROTATE:
         break;
 
       default:
+        shoulderMoving = false;
+        forearmMoving = false;
         digitalWrite(LED_BUILTIN, LOW);
         armShoulder.set_speed(0);
         armElbow.set_speed(0);
