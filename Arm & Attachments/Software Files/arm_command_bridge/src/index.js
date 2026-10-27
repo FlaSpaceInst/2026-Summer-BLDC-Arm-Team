@@ -2,33 +2,46 @@
 
 const { SerialPort } = require('serialport');
 const { createApp } = require('./app');
+const { readSerialConfiguration } = require('./config');
 
-const serialPath = process.env.SERIAL_PORT;
-const baudRate = Number(process.env.SERIAL_BAUD_RATE || 115200);
-const httpPort = Number(process.env.HTTP_PORT || 3000);
-
-if (!serialPath) 
-{
-  console.error('SERIAL_PORT is required (for example, /dev/ttyACM0 or COM3).');
-  process.exit(1);
+function openPort(path, label, baudRate) {
+  if (!path) {
+    return null;
+  }
+  const port = new SerialPort({ path, baudRate });
+  port.on('open', () => console.log(label + ' Arduino connected on ' + path));
+  port.on('close', () => console.error(label + ' Arduino disconnected from ' + path));
+  port.on('error', (error) => console.error(label + ' serial error: ' + error.message));
+  return port;
 }
 
-const serialPort = new SerialPort(
-{
-  path: serialPath,
-  baudRate
-});
+function main() {
+  let config;
+  try {
+    config = readSerialConfiguration(process.env);
+  } catch (error) {
+    console.error(error.message);
+    console.error('WHEELS_SERIAL_PORT is optional; leave it unset if the rover drive service owns the wheel Arduino.');
+    process.exitCode = 1;
+    return;
+  }
 
-serialPort.on('error', (error) => {
-  console.error(`Serial error: ${error.message}`);
-});
+  const ports = {
+    arm: openPort(config.armPath, 'ARM', config.baudRate),
+    hand: openPort(config.handPath, 'HAND', config.baudRate),
+    wheels: openPort(config.wheelsPath, 'WHEELS', config.baudRate)
+  };
 
-serialPort.on('open', () => {
-  console.log(`Serial port ${serialPath} opened at ${baudRate} baud.`);
-});
+  createApp(ports).listen(config.httpPort, '0.0.0.0', () => {
+    console.log('RE-RASSOR arm bridge listening on port ' + config.httpPort);
+    if (!ports.wheels) {
+      console.log('Base rotation is disabled in this bridge. Rover drive service retains wheels serial ownership.');
+    }
+  });
+}
 
-const app = createApp(serialPort);
+if (require.main === module) {
+  main();
+}
 
-app.listen(httpPort, '0.0.0.0', () => {
-  console.log(`Arm command bridge listening on port ${httpPort}.`);
-});
+module.exports = { main };
