@@ -642,6 +642,42 @@ const ControllerStyle = StyleSheet.create({
     alignItems: 'center',
   },
 
+  // Original ROVER V1 three-dot wheel-speed indicators: 5px lights in
+  // vertical columns against the inside edges of the left/right D-pad.
+  circle: {
+    width: 5,
+    height: 5,
+    borderRadius: 5,
+    backgroundColor: '#5b5b5b',
+    margin: 5
+  },
+
+  positiveCircle: {
+    backgroundColor: '#70fc00'
+  },
+
+  negativeCircle: {
+    backgroundColor: '#ff3636'
+  },
+
+  circleOverlayVerticalLeft: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    right: 0,
+    flexDirection: 'column',
+    justifyContent: 'center'
+  },
+
+  circleOverlayVerticalRight: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    flexDirection: 'column',
+    justifyContent: 'center'
+  },
+
   dPadLeft: {
     flex: 1,
     backgroundColor: '#3a3d3d',

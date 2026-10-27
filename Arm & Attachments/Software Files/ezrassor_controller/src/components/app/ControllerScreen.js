@@ -25,6 +25,8 @@ import { getWebLayout } from '../../functionality/web-layout';
 import ArmControlPanel from './ArmControlPanel';
 import CameraFeed from './CameraFeed';
 import { getNextControlMode } from '../../functionality/control-modes';
+import { nextTapSpeed } from '../../functionality/tap-speed';
+import SpeedDots from './SpeedDots';
 
 const CONNECTION_POLLING_INTERVAL = 2000;
 const CONNECTION_POLLING_TIMEOUT = 4000;
@@ -49,6 +51,7 @@ export default class ControllerScreen extends React.Component {
       xy: '0,0',
       ip: '',
       offlineMode: false,
+      wheelSpeed: 0,
       controlMode: this.getInitialMode(props),
       previousControlMode: 'drum',
       screenWidth: 1200,
@@ -58,6 +61,8 @@ export default class ControllerScreen extends React.Component {
     this.EZRASSOR = new EZRASSOR(this.state.ip);
     this.armPanelRef = React.createRef();
     this.wheelMoving = false;
+    this.wheelOperation = null;
+    this.wheelLevel = 0;
     this.componentMounted = false;
   }
 
@@ -77,17 +82,55 @@ export default class ControllerScreen extends React.Component {
     this.setState((state) => getNextControlMode(mode, state.controlMode, state.previousControlMode));
   }
 
+  // Tap once to drive at Level 1 tapping the same direction again advances to Level 2, then Level 3. Movement stays active until STOP or a UI exit.
   pressWheel(operation) {
-    this.wheelMoving = true;
-    this.sendOperation(Robot.WHEELS, operation);
-  }
-
-  stopWheels() {
-    if (!this.wheelMoving) {
+    if (this.state.offlineMode) {
       return;
     }
+
+    const speed = nextTapSpeed(this.wheelOperation, operation, this.wheelLevel);
+    if (this.wheelMoving && this.wheelOperation !== operation) {
+      // Queue a STOP before reversing or changing turn direction.
+      this.sendOperation(Robot.WHEELS, WheelOperation.STOP);
+    }
+
+    this.wheelMoving = true;
+    this.wheelOperation = operation;
+    this.wheelLevel = speed;
+    this.setState({ wheelSpeed: speed });
+    this.sendOperation(Robot.WHEELS, operation, speed);
+  }
+
+  // The original ROVER V1 shows left- and right-wheel speeds separately.
+  getWheelIndicatorLevels() {
+    const speed = this.state.wheelSpeed;
+    if (!this.wheelMoving || speed === 0) {
+      return { left: 0, right: 0 };
+    }
+    if (this.wheelOperation === WheelOperation.FORWARD) {
+      return { left: speed, right: speed };
+    }
+    if (this.wheelOperation === WheelOperation.BACKWARD) {
+      return { left: -speed, right: -speed };
+    }
+    if (this.wheelOperation === WheelOperation.LEFT) {
+      return { left: -speed, right: speed };
+    }
+    if (this.wheelOperation === WheelOperation.RIGHT) {
+      return { left: speed, right: -speed };
+    }
+    return { left: 0, right: 0 };
+  }
+
+  stopWheels(force = false) {
+    const wasMoving = this.wheelMoving;
     this.wheelMoving = false;
-    this.sendOperation(Robot.WHEELS, WheelOperation.STOP);
+    this.wheelOperation = null;
+    this.wheelLevel = 0;
+    this.setState({ wheelSpeed: 0 });
+    if (wasMoving || force) {
+      this.sendOperation(Robot.WHEELS, WheelOperation.STOP);
+    }
   }
 
   stopAllControls() {
@@ -159,6 +202,7 @@ export default class ControllerScreen extends React.Component {
             console.log(`Connection poll attempt ${++pollCount} succeeded...`);
           }
         } else {
+          this.stopAllControls();
           console.log(`Dropped connection from ${this.state.ip}... redirecting to connection screen.`);
           this.props.navigation.replace('Connection Status Screen', { screen: 'roverDisconnected' });
         }
@@ -241,14 +285,18 @@ export default class ControllerScreen extends React.Component {
   /**
    * Update animation frame before processing click so that opacity can change on click.
    */
-  sendOperation(part, operation) {
+  sendOperation(part, operation, speed = 1) {
     if (this.state.offlineMode) {
       return;
     }
 
-    const command = this.EZRASSOR.executeRobotCommand(part, operation);
+    const command = this.EZRASSOR.executeRobotCommand(part, operation, speed);
     if (command && typeof command.catch === 'function') {
       command.catch((error) => {
+        // A failed drive/speed request must not leave the UI indicating motion.
+        // Attempt a rover-wide STOP independently of the failed command.
+        this.stopWheels();
+        this.EZRASSOR.allStop().catch(() => {});
         console.error('Rover command failed:', error);
       });
     }
@@ -709,12 +757,11 @@ export default class ControllerScreen extends React.Component {
             ControllerStyle.wheelFunctionContainer,
             webLayout.isStacked && { flex: 0, minHeight: 310, width: '100%', marginLeft: 0, marginRight: 0 }
           ]}>
-
+            {/* Original three-dot speed lights are embedded in the LEFT/RIGHT D-pad buttons. */}
 
             {/* Forwards button. */}
             <TouchableOpacity style={ControllerStyle.upAndDownDPad}
-              onPressIn={() => this.pressWheel(WheelOperation.FORWARD)}
-                onPressOut={() => this.stopWheels()}
+              onPress={() => this.pressWheel(WheelOperation.FORWARD)}
             >
               <FontAwesome name="chevron-up" size={50} color="#fff" />
             </TouchableOpacity>
@@ -724,27 +771,35 @@ export default class ControllerScreen extends React.Component {
 
               {/* Left button. */}
               <TouchableOpacity style={ControllerStyle.dPadLeft}
-                onPressIn={() => this.pressWheel(WheelOperation.LEFT)}
-                onPressOut={() => this.stopWheels()}
+                onPress={() => this.pressWheel(WheelOperation.LEFT)}
               >
                 <FontAwesome name="chevron-left" size={50} color="#fff" />
+                <SpeedDots
+                  level={this.getWheelIndicatorLevels().left}
+                  side="right"
+                  label="Left wheel speed"
+                />
               </TouchableOpacity>
 
-              {/* Center stop button: reset wheel speed to zero. */}
+              {/* Explicit STOP: stops wheels and resets tap speed to zero. */}
               <TouchableOpacity
                 accessibilityLabel="Stop wheels"
                 style={{ width: 58, height: 58, alignSelf: 'center', marginHorizontal: 4, backgroundColor: '#5D6061', borderRadius: 4, elevation: 5, justifyContent: 'center', alignItems: 'center' }}
-                onPress={() => { this.sendOperation(Robot.WHEELS, WheelOperation.STOP); }}
+                onPress={() => this.stopWheels(true)}
               >
                 <FontAwesome name="stop" size={24} color="#fff" />
               </TouchableOpacity>
 
               {/* Right button. */}
               <TouchableOpacity style={ControllerStyle.dPadRight}
-                onPressIn={() => this.pressWheel(WheelOperation.RIGHT)}
-                onPressOut={() => this.stopWheels()}
+                onPress={() => this.pressWheel(WheelOperation.RIGHT)}
               >
                 <FontAwesome name="chevron-right" size={50} color="#fff" />
+                <SpeedDots
+                  level={this.getWheelIndicatorLevels().right}
+                  side="left"
+                  label="Right wheel speed"
+                />
               </TouchableOpacity>
             </View>
 
@@ -753,8 +808,7 @@ export default class ControllerScreen extends React.Component {
 
             {/* Backwards button. */}
             <TouchableOpacity style={ControllerStyle.upAndDownDPad}
-              onPressIn={() => this.pressWheel(WheelOperation.BACKWARD)}
-                onPressOut={() => this.stopWheels()}
+              onPress={() => this.pressWheel(WheelOperation.BACKWARD)}
             >
               <FontAwesome name="chevron-down" size={50} color="#fff" />
             </TouchableOpacity>

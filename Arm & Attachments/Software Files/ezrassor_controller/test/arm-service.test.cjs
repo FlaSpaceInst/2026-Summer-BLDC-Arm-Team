@@ -26,7 +26,7 @@ function createService() {
   };
   const context = { Robot, Operation, HTTP, console, Promise };
   vm.runInNewContext(source + '\nthis.Service = EZRASSOR;', context, {filename:sourceFile});
-  return { service:new context.Service('127.0.0.1:3000'), Robot, Operation, writes };
+  return { service:new context.Service('127.0.0.1:5000'), Robot, Operation, writes };
 }
 
 test('original shoulder button commands send only press and release, no periodic heartbeat', async () => {
@@ -34,7 +34,7 @@ test('original shoulder button commands send only press and release, no periodic
   await service.executeRobotCommand(Robot.SHOULDER, Operation.POSITIVE);
   await service.executeRobotCommand(Robot.SHOULDER, Operation.STOP);
   assert.deepEqual(writes.map((w) => w.body), [
-    {shoulder_joint_action:'POSITIVE'},
+    {shoulder_joint_speed:2, shoulder_joint_action:'POSITIVE'},
     {shoulder_joint_action:'STOP'}
   ]);
 });
@@ -65,4 +65,12 @@ test('unsupported autonomy is rejected locally', async () => {
   const {service, Robot, writes} = createService();
   await assert.rejects(service.executeRobotCommand(Robot.AUTONOMY, 'PICKUP'));
   assert.equal(writes.length, 0);
+});
+
+test('queued commands retain the ROS host selected when issued', async () => {
+  const {service, Robot, Operation, writes} = createService();
+  const pending = service.executeRobotCommand(Robot.SHOULDER, Operation.POSITIVE);
+  service.host = '192.168.10.99:5000';
+  await pending;
+  assert.equal(writes[0].host, '127.0.0.1:5000');
 });

@@ -1,8 +1,9 @@
 node_modules/
-desktop/node_modules/
-web-build/
-release/
-desktop/release/
 .expo/
+web-build/
 dist/
+release/
+desktop/node_modules/
+desktop/web-build/
+desktop/dist/
 *.log

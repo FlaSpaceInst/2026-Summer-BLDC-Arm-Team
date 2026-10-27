@@ -51,7 +51,6 @@ export async function isIpReachable(ip, timeoutTime = DEFAULT_TIMEOUT_TIME, verb
       signal: controller.signal,
     });
 
-<<<<<<< Updated upstream
     // Any HTTP response proves that a server answered.
     // A non-2xx status may still mean the host is reachable.
     if (verbose) 
@@ -74,14 +73,6 @@ export async function isIpReachable(ip, timeoutTime = DEFAULT_TIMEOUT_TIME, verb
   {
     clearTimeout(timeout);
   }
-    Promise
-      .race([attemptConnection, timeout])
-      .then(() => { resolve(true); })
-      .catch((error) => { 
-          console.log('Failed to connect to rover:', ip, error);
-          resolve(false); 
-        })
-  });
 }
 
 /**

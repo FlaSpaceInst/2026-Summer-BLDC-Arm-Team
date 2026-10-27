@@ -1,5 +1,4 @@
 'use strict';
-
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -8,22 +7,32 @@ const vm = require('node:vm');
 
 const source = fs.readFileSync(path.join(__dirname, '../src/components/app/ArmControlPanel.js'), 'utf8');
 
-// Run the component's real connection methods without a native React renderer.
-// The JSX render methods are excluded because no visual component is needed here.
+function getRosControlHost(roverIp) {
+  if (typeof roverIp !== 'string') {
+    return '';
+  }
+  let address = roverIp.trim().replace(/^https?:\/\//, '').split('/')[0];
+  if (!address) {
+    return '';
+  }
+  if (!address.includes(':')) {
+    address += ':5000';
+  }
+  return address;
+}
+
 function createPanel(options = {}) {
   const fetchCalls = [];
-  const storedAddresses = [];
+  const commands = [];
   const props = {
-    roverIp: options.roverIp || '127.0.0.1:3000',
+    roverIp: options.roverIp === undefined ? '192.168.10.3:5000' : options.roverIp,
     offlineMode: options.offlineMode === true
   };
-
   class Component {
     constructor(componentProps) {
       this.props = componentProps;
       this.state = {};
     }
-
     setState(patch, callback) {
       this.state = { ...this.state, ...patch };
       if (callback) {
@@ -31,206 +40,209 @@ function createPanel(options = {}) {
       }
     }
   }
-
   class EZARM {
     constructor(host) {
       this.host = host;
     }
-
-    executeRobotCommand() {
+    executeRobotCommand(part, operation, speed) {
+      commands.push({ host: this.host, part, operation, speed });
       return Promise.resolve();
     }
-
+    setSpeed(part, speed) {
+      commands.push({ host: this.host, part, operation: 'SPEED_ONLY', speed });
+      return Promise.resolve();
+    }
     allStop() {
+      commands.push({ host: this.host, part: 'all', operation: 'STOP' });
       return Promise.resolve();
     }
   }
-
-  const AsyncStorage = {
-    getItem() {
-      if (options.savedAddressPromise) {
-        return options.savedAddressPromise;
-      }
-      return Promise.resolve(options.savedAddress || null);
-    },
-    setItem(key, value) {
-      storedAddresses.push({ key, value });
-      if (options.storageWriteFails) {
-        return Promise.reject(new Error('Storage unavailable'));
-      }
-      return Promise.resolve();
-    }
-  };
-  const fetch = (url, settings) => {
+  const roverFetch = (url, settings) => {
     fetchCalls.push({ url, settings });
     if (options.fetchImpl) {
       return options.fetchImpl(url, settings);
     }
     return Promise.resolve({
       ok: true,
-      json: async () => ({ armOpen: true, handOpen: true, wheelsOpen: false, baseEnabled: false })
+      json: async () => ({ ready: true, armOpen: true, handOpen: true, wheelsOpen: true, baseEnabled: false, serialProtocol: 'binary' })
     });
   };
-
   const start = source.indexOf('export default class ArmControlPanel');
   const end = source.indexOf('  renderJoint(', start);
   assert.ok(start >= 0 && end > start);
   const classSource = source.slice(start, end)
     .replace('export default class ArmControlPanel', 'class ArmControlPanel') + '\n}\nthis.ArmControlPanel = ArmControlPanel;';
-
   const context = {
-    React: { Component },
-    AsyncStorage,
-    EZARM,
-    fetch,
-    roverFetch: fetch,
-    AbortController,
-    setTimeout,
-    clearTimeout,
-    Robot: { PLATE:'plate', ALL:'all' },
-    Operation: { STOP:'STOP' },
-    getDefaultArmBridgeHost(roverIp) {
-      if (!roverIp) {
-        return '127.0.0.1:3000';
-      }
-      const hostname = roverIp.replace(/^https?:\/\//, '').split('/')[0].split(':')[0];
-      return hostname + ':3000';
-    }
+    React: { Component }, EZARM, roverFetch, AbortController, setTimeout, clearTimeout,
+    Robot: { PLATE: 'plate', ALL: 'all', ENDEFFECTOR: 'hand', SHOULDER: 'shoulder', FOREARM: 'forearm' },
+    Operation: { STOP: 'STOP', POSITIVE: 'POSITIVE', NEGATIVE: 'NEGATIVE' },
+    nextTapSpeed: (current, next, level) => current === next && level >= 1 ? Math.min(level + 1, 3) : 1,
+    getRosControlHost
   };
-
   vm.runInNewContext(classSource, context, { filename: 'ArmControlPanel.js' });
-  return { panel: new context.ArmControlPanel(props), fetchCalls, storedAddresses };
+  return { panel: new context.ArmControlPanel(props), fetchCalls, commands };
 }
-
-async function flushPromises() {
+async function flush() {
   await new Promise((resolve) => setImmediate(resolve));
 }
 
-test('entering Arm Mode automatically checks the bridge and unlocks connected arm/hand', async () => {
+test('Arm Mode automatically checks the ROS 2 host on port 5000', async () => {
   const { panel, fetchCalls } = createPanel();
-  await panel.componentDidMount();
-  await flushPromises();
+  panel.componentDidMount();
+  await flush();
   assert.equal(fetchCalls.length, 1);
-  assert.equal(fetchCalls[0].url, 'http://127.0.0.1:3000/health');
-  assert.equal(panel.state.bridgeReady, true);
-  assert.equal(panel.state.statusMessage, 'ARM + HAND CONNECTED');
-  assert.equal(panel.state.baseAvailable, false);
+  assert.equal(fetchCalls[0].url, 'http://192.168.10.3:5000/health');
+  assert.equal(panel.state.rosReady, true);
+  assert.match(panel.state.statusMessage, /ROS 2: ARM \+ HAND CONNECTED/);
+  assert.equal(panel.armService.host, '192.168.10.3:5000');
   panel.componentWillUnmount();
 });
 
-test('entering Arm Mode loads saved bridge address before connecting', async () => {
-  const { panel, fetchCalls, storedAddresses } = createPanel({
-    roverIp: '192.168.10.3:5000',
-    savedAddress: '192.168.10.25:3000'
-  });
-  await panel.componentDidMount();
-  await flushPromises();
-  assert.equal(fetchCalls.length, 1);
-  assert.equal(fetchCalls[0].url, 'http://192.168.10.25:3000/health');
-  assert.equal(panel.armService.host, '192.168.10.25:3000');
-  assert.deepEqual(storedAddresses, [{ key:'armBridgeIp', value:'192.168.10.25:3000' }]);
-  panel.componentWillUnmount();
-});
-
-test('explicit mock port 3000 takes priority over a previous saved bridge IP', async () => {
-  const { panel, fetchCalls } = createPanel({
-    roverIp: '127.0.0.1:3000',
-    savedAddress: '192.168.10.99:3000'
-  });
-  await panel.componentDidMount();
-  await flushPromises();
-  assert.equal(fetchCalls.length, 1);
-  assert.equal(fetchCalls[0].url, 'http://127.0.0.1:3000/health');
-  assert.equal(panel.state.bridgeReady, true);
-  panel.componentWillUnmount();
-});
-
-test('offline preview never probes or enables physical motor controls', async () => {
+test('offline preview never checks ROS or enables motors', async () => {
   const { panel, fetchCalls } = createPanel({ offlineMode: true });
-  await panel.componentDidMount();
-  await flushPromises();
+  panel.componentDidMount();
+  await flush();
   assert.equal(fetchCalls.length, 0);
-  assert.equal(panel.state.bridgeReady, false);
-  assert.match(panel.state.statusMessage, /OFFLINE PREVIEW/);
+  assert.equal(panel.state.rosReady, false);
   panel.componentWillUnmount();
 });
 
-test('both Arduino connections must be open to enable controls', async () => {
-  const { panel } = createPanel({ fetchImpl: async () => ({
-    ok: true,
-    json: async () => ({ armOpen: true, handOpen: false, wheelsOpen: false })
-  }) });
-  await panel.componentDidMount();
-  await flushPromises();
-  assert.equal(panel.state.bridgeReady, false);
-  assert.match(panel.state.statusMessage, /disconnected/);
+test('missing rover address fails closed', async () => {
+  const { panel, fetchCalls } = createPanel({ roverIp: '' });
+  panel.componentDidMount();
+  await flush();
+  assert.equal(fetchCalls.length, 0);
+  assert.equal(panel.state.rosReady, false);
+  assert.match(panel.state.statusMessage, /CONNECT TO THE ROVER/);
   panel.componentWillUnmount();
 });
 
-test('base movement remains disabled unless separately authorized by bridge', async () => {
+test('health must have both boards connected and ready', async () => {
   const { panel } = createPanel({ fetchImpl: async () => ({
     ok: true,
-    json: async () => ({ armOpen: true, handOpen: true, wheelsOpen: true, baseEnabled: false })
+    json: async () => ({ serialProtocol: 'binary', ready: false, armOpen: true, handOpen: false })
   }) });
-  await panel.componentDidMount();
-  await flushPromises();
-  assert.equal(panel.state.bridgeReady, true);
+  panel.componentDidMount();
+  await flush();
+  assert.equal(panel.state.rosReady, false);
+  assert.match(panel.state.statusMessage, /ROS UNAVAILABLE/);
+  panel.componentWillUnmount();
+});
+
+test('the old Node bridge health shape is rejected', async () => {
+  const { panel } = createPanel({ fetchImpl: async () => ({
+    ok: true,
+    json: async () => ({ armOpen: true, handOpen: true, ready: true, protocol: 'press-stop' })
+  }) });
+  panel.componentDidMount();
+  await flush();
+  assert.equal(panel.state.rosReady, false);
+  assert.match(panel.state.statusMessage, /binary serial driver/);
+  panel.componentWillUnmount();
+});
+
+test('base remains disabled until ROS wheel status explicitly enables it', async () => {
+  const { panel } = createPanel();
+  panel.componentDidMount();
+  await flush();
+  assert.equal(panel.state.rosReady, true);
   assert.equal(panel.state.baseAvailable, false);
   panel.componentWillUnmount();
 });
 
-test('storage write failure does not undo a valid connection', async () => {
-  const { panel } = createPanel({ storageWriteFails: true });
-  await panel.componentDidMount();
-  await flushPromises();
-  assert.equal(panel.state.bridgeReady, true);
+test('arm taps use ROS and STOP resets speed', async () => {
+  const { panel, commands } = createPanel();
+  panel.componentDidMount();
+  await flush();
+  panel.pressMotion('shoulder', 'POSITIVE', 'Shoulder Up');
+  assert.equal(panel.state.armSpeed, 1);
+  panel.stopMotion();
+  assert.equal(panel.state.armSpeed, 0);
+  await flush();
+  assert.deepEqual(commands.map(command => [command.host, command.operation]), [
+    ['192.168.10.3:5000', 'POSITIVE'],
+    ['192.168.10.3:5000', 'STOP']
+  ]);
   panel.componentWillUnmount();
 });
 
-test('a stale check cannot enable controls after address is changed', async () => {
-  let resolveFetch;
-  const { panel } = createPanel({ fetchImpl: () => new Promise((resolve) => {
-    resolveFetch = resolve;
-  }) });
-  await panel.componentDidMount();
-  panel.bridgeCheckId += 1;
-  panel.setState({ bridgeIp:'192.168.10.100:3000', bridgeReady:false });
-  resolveFetch({ ok:true, json:async () => ({ armOpen:true, handOpen:true }) });
-  await flushPromises();
-  assert.equal(panel.state.bridgeReady, false);
+test('changing rover IP switches the ROS host and ignores stale health', async () => {
+  let resolveOld;
+  const { panel, fetchCalls } = createPanel({ fetchImpl: (url) => {
+    if (url.includes('192.168.10.3')) {
+      return new Promise(resolve => { resolveOld = resolve; });
+    }
+    return Promise.resolve({ ok:true, json: async () => ({serialProtocol:'binary', ready:true, armOpen:true, handOpen:true}) });
+  } });
+  panel.componentDidMount();
+  const oldProps = panel.props;
+  panel.props = { ...oldProps, roverIp:'192.168.10.20:5000' };
+  panel.componentDidUpdate(oldProps);
+  await flush();
+  assert.equal(panel.state.rosReady, true);
+  assert.equal(panel.armService.host, '192.168.10.20:5000');
+  resolveOld({ ok:true, json: async () => ({serialProtocol:'binary', ready:true, armOpen:true, handOpen:true}) });
+  await flush();
+  assert.equal(panel.armService.host, '192.168.10.20:5000');
+  assert.equal(panel.state.rosReady, true);
+  assert.equal(fetchCalls.length, 2);
   panel.componentWillUnmount();
 });
 
-test('a check result after unmount cannot reenable controls', async () => {
-  let resolveFetch;
-  const { panel } = createPanel({ fetchImpl: () => new Promise((resolve) => {
-    resolveFetch = resolve;
-  }) });
-  await panel.componentDidMount();
-  panel.componentWillUnmount();
-  resolveFetch({ ok:true, json:async () => ({ armOpen:true, handOpen:true }) });
-  await flushPromises();
-  assert.equal(panel.state.bridgeReady, false);
+test('no saved bridge address or separate port 3000 is used by active Arm Mode', () => {
+  assert.doesNotMatch(source, /armBridgeIp|AsyncStorage|:3000|CHECK BRIDGE/);
+  assert.match(source, /this\.checkRos\(\)/);
+  assert.match(source, /STOP REQUESTED/);
 });
 
-test('updated rover host is checked when there is no saved arm bridge', async () => {
-  const { panel, fetchCalls } = createPanel({ roverIp:'192.168.10.3:5000' });
-  await panel.componentDidMount();
-  await flushPromises();
-  // Recreate the situation where the rover address becomes available after mount.
-  panel.savedBridgeIp = false;
-  const previousProps = panel.props;
-  panel.props = { ...panel.props, roverIp:'192.168.10.5:5000' };
-  panel.componentDidUpdate(previousProps);
-  await flushPromises();
-  assert.equal(fetchCalls.at(-1).url, 'http://192.168.10.5:3000/health');
-  assert.equal(panel.state.bridgeReady, true);
+test('repeated shoulder taps send speed-only updates and cap at level 3', async () => {
+  const { panel, commands } = createPanel();
+  panel.componentDidMount();
+  await flush();
+  for (let i = 0; i < 4; i += 1) {
+    panel.pressMotion('shoulder', 'POSITIVE', 'Shoulder Up');
+  }
+  await flush();
+  assert.deepEqual(commands.map(command => [command.operation, command.speed]), [
+    ['POSITIVE', 1], ['SPEED_ONLY', 2], ['SPEED_ONLY', 3]
+  ]);
+  assert.equal(panel.state.armSpeed, 3);
+  panel.stopMotion();
+  assert.equal(panel.state.armSpeed, 0);
+  panel.pressMotion('shoulder', 'POSITIVE', 'Shoulder Up');
+  await flush();
+  assert.deepEqual(commands.at(-1).operation, 'POSITIVE');
+  assert.equal(commands.at(-1).speed, 1);
   panel.componentWillUnmount();
 });
 
-test('bridge check is on-entry only, with no movement heartbeat interval', () => {
-  assert.match(source, /this\.checkBridge\(bridgeIp\)/);
-  assert.doesNotMatch(source, /setInterval\s*\(/);
-  assert.doesNotMatch(source, /\/heartbeat/i);
-  assert.match(source, /this\.bridgeCheckId \+= 1; this\.addressEdited = true/);
+test('direction reversal issues STOP before restarting at level 1', async () => {
+  const { panel, commands } = createPanel();
+  panel.componentDidMount();
+  await flush();
+  panel.pressMotion('shoulder', 'POSITIVE', 'Shoulder Up');
+  panel.pressMotion('shoulder', 'POSITIVE', 'Shoulder Up');
+  panel.pressMotion('shoulder', 'NEGATIVE', 'Shoulder Down');
+  await flush();
+  assert.deepEqual(commands.map(command => command.operation), [
+    'POSITIVE', 'SPEED_ONLY', 'STOP', 'NEGATIVE'
+  ]);
+  assert.equal(commands.at(-1).speed, 1);
+  panel.componentWillUnmount();
+});
+
+test('repeated gripper taps restart the finite-duration gripper pulse', async () => {
+  const { panel, commands } = createPanel();
+  panel.componentDidMount();
+  await flush();
+  panel.pressMotion('hand', 'POSITIVE', 'Gripper Open');
+  panel.pressMotion('hand', 'POSITIVE', 'Gripper Open');
+  panel.pressMotion('hand', 'POSITIVE', 'Gripper Open');
+  await flush();
+  assert.deepEqual(commands.map(command => [command.operation, command.speed]), [
+    ['POSITIVE', 1], ['POSITIVE', 2], ['POSITIVE', 3]
+  ]);
+  panel.emergencyStop();
+  assert.equal(panel.state.armSpeed, 0);
+  panel.componentWillUnmount();
 });

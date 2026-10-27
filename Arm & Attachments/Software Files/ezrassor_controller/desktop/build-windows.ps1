@@ -1,4 +1,5 @@
-# Builds the Expo app as a standalone Windows Electron app.
+# Builds the original Expo app as a standalone Windows Electron app.
+# Run on Windows 10/11 (x64), with Node.js installed and internet access.
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $ProjectRoot = Split-Path $PSScriptRoot -Parent
@@ -56,7 +57,12 @@ try {
         Invoke-Step 'npm.cmd' @('install', '--no-audit', '--no-fund')
         Invoke-Step 'npm.cmd' @('test')
         Write-Host 'Building Windows setup and portable executables...' -ForegroundColor Cyan
-        Invoke-Step 'npm.cmd' @('run', 'package:win')
+        # Run the installed Electron Builder CLI directly; Windows .cmd shims can misparse paths with an ampersand (such as 'Arm & Attachments').
+        $ElectronBuilderCli = Join-Path $PSScriptRoot 'node_modules\electron-builder\cli.js'
+        if (-not (Test-Path -LiteralPath $ElectronBuilderCli)) {
+            throw "Local Electron Builder CLI missing: $ElectronBuilderCli. Run npm install inside desktop."
+        }
+        Invoke-Step 'node.exe' @($ElectronBuilderCli, '--win', '--x64')
     } finally {
         Pop-Location
     }
