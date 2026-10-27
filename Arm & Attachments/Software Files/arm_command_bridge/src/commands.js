@@ -1,51 +1,149 @@
 'use strict';
 
-// Individual, event-driven movement commands. There is no heartbeat protocol.
-const commandCodes = Object.freeze({
-  shoulder_joint_action: { POSITIVE: 0x0f, NEGATIVE: 0x10, STOP: 0x11 },
-  forearm_joint_action: { POSITIVE: 0x12, NEGATIVE: 0x13, STOP: 0x14 },
-  end_effector_action: { POSITIVE: 0x09, NEGATIVE: 0x0a, STOP: 0x0b },
-  plate_joint_action: { POSITIVE: 'ARM_CW\n', NEGATIVE: 'ARM_CCW\n', STOP: 'ARM_STOP\n' }
-});
-
-const portForJoint = Object.freeze({
-  shoulder_joint_action: 'arm',
-  forearm_joint_action: 'arm',
-  end_effector_action: 'hand',
-  plate_joint_action: 'wheels'
-});
-
-class CommandValidationError extends Error {}
-
-function commandsFromRequest(body) {
-  if (!body || typeof body !== 'object' || Array.isArray(body)) {
-    throw new CommandValidationError('Expected a JSON command object.');
+class CommandValidationError extends Error 
+{
+  constructor(message) 
+  {
+    super(message);
+    this.name = 'CommandValidationError';
   }
-
-  const fields = Object.keys(body);
-  if (fields.length === 0) {
-    throw new CommandValidationError('Missing joint command.');
-  }
-
-  if (fields.some((field) => !Object.hasOwn(commandCodes, field))) {
-    throw new CommandValidationError('Unknown or unsupported arm command.');
-  }
-
-  // The original arm UI sends all four STOP actions for emergency STOP.
-  if (fields.length > 1) {
-    if (fields.length !== 4 || fields.some((field) => body[field] !== 'STOP')) {
-      throw new CommandValidationError('Only one joint may move per request.');
-    }
-    return [{ type: 'allStop' }];
-  }
-
-  const joint = fields[0];
-  const action = body[joint];
-  if (!Object.hasOwn(commandCodes[joint], action)) {
-    throw new CommandValidationError('Invalid joint action.');
-  }
-
-  return [{ type: 'joint', joint, action, port: portForJoint[joint], command: commandCodes[joint][action] }];
 }
 
-module.exports = { commandCodes, portForJoint, CommandValidationError, commandsFromRequest };
+const COMMANDS = 
+{
+  STOP: 0x00,
+  OPEN_EFFECTOR: 0x09,
+  CLOSE_EFFECTOR: 0x0A,
+  STOP_EFFECTOR: 0x0B,
+  ARM_FWD_SHOULDER: 0x0F,
+  ARM_REV_SHOULDER: 0x10,
+  ARM_STOP_SHOULDER: 0x11,
+  ARM_FWD_ELBOW: 0x12,
+  ARM_REV_ELBOW: 0x13,
+  ARM_STOP_ELBOW: 0x14,
+  ARM_ROTATE_CW: 0x0C,
+  ARM_ROTATE_CCW: 0x0D,
+  ARM_STOP_ROTATE: 0x0E,
+  ARM_STOP_ALL: 0x18
+};
+
+function commandsFromRequest(body) 
+{
+  if (!body || typeof body !== 'object' || Array.isArray(body)) 
+  {
+    throw new CommandValidationError('Request body must be a JSON object.');
+  }
+
+  const commands = [];
+  const actionFields = [
+    'plate_joint_action',
+    'shoulder_joint_action',
+    'forearm_joint_action',
+    'end_effector_action'
+  ];
+
+  const supportedFields = [
+    ...actionFields,
+    'plate_joint_action'
+  ];
+
+  const unknownFields = Object.keys(body).filter((key) => !supportedFields.includes(key));
+
+  if (unknownFields.length > 0) 
+  {
+    throw new CommandValidationError(`Unsupported field(s): ${unknownFields.join(', ')}`);
+  }
+
+
+  for (const field of actionFields) 
+  {
+    if (!Object.prototype.hasOwnProperty.call(body, field)) {continue;}
+
+    const action = body[field];
+
+    if (action === 'STOP') 
+    {
+      if (field === 'plate_joint_action') {
+        commands.push(COMMANDS.ARM_STOP_ROTATE);
+      }else if (field === 'shoulder_joint_action') 
+      {
+        commands.push(COMMANDS.ARM_STOP_SHOULDER);
+      } 
+      else if (field === 'forearm_joint_action') 
+      {
+        commands.push(COMMANDS.ARM_STOP_ELBOW);
+      } 
+      else 
+      {
+        commands.push(COMMANDS.STOP_EFFECTOR);
+      }
+
+      continue;
+    }
+
+    if (field === 'plate_joint_action') {
+      if (action === 'POSITIVE') {
+        commands.push(COMMANDS.ARM_ROTATE_CW);
+      } else if (action === 'NEGATIVE') {
+        commands.push(COMMANDS.ARM_ROTATE_CCW);
+      } else {
+        throw new CommandValidationError(`Invalid base action: ${action}`);
+      }
+    } else if (field === 'shoulder_joint_action') {
+      if (action === 'POSITIVE') 
+      {
+        commands.push(COMMANDS.ARM_FWD_SHOULDER);
+      } 
+      else if (action === 'NEGATIVE') 
+      {
+        commands.push(COMMANDS.ARM_REV_SHOULDER);
+      } 
+      else
+      {
+        throw new CommandValidationError(`Invalid shoulder action: ${action}`);
+      }
+    } 
+    else if (field === 'forearm_joint_action') 
+    {
+      if (action === 'POSITIVE') 
+      {
+        commands.push(COMMANDS.ARM_FWD_ELBOW);
+      } 
+      else if (action === 'NEGATIVE') 
+      {
+        commands.push(COMMANDS.ARM_REV_ELBOW);
+      } 
+      else 
+      {
+        throw new CommandValidationError(`Invalid forearm action: ${action}`);
+      }
+    } 
+    else if (field === 'end_effector_action') 
+    {
+      if (action === 'POSITIVE') 
+      {
+        commands.push(COMMANDS.OPEN_EFFECTOR);
+      } 
+      else if (action === 'NEGATIVE') 
+      {
+        commands.push(COMMANDS.CLOSE_EFFECTOR);
+      } 
+      else 
+      {
+        throw new CommandValidationError(`Invalid end effector action: ${action}`);
+      }
+    }
+  }
+
+  if (commands.length === 0) 
+  {
+    throw new CommandValidationError('No supported arm commands were provided.');
+  }
+
+  return commands;
+}
+
+module.exports = {
+  CommandValidationError,
+  commandsFromRequest
+};
