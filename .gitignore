@@ -21,3 +21,11 @@ coverage/
 .env.*
 !.env.example
 
+# Python and ROS 2 build artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+build/
+install/
+log/
+
