@@ -21,6 +21,9 @@ const COMMANDS =
   ARM_FWD_ELBOW: 0x12,
   ARM_REV_ELBOW: 0x13,
   ARM_STOP_ELBOW: 0x14,
+  ARM_ROTATE_CW: 0x0C,
+  ARM_ROTATE_CCW: 0x0D,
+  ARM_STOP_ROTATE: 0x0E,
   ARM_STOP_ALL: 0x18
 };
 
@@ -33,6 +36,7 @@ function commandsFromRequest(body)
 
   const commands = [];
   const actionFields = [
+    'plate_joint_action',
     'shoulder_joint_action',
     'forearm_joint_action',
     'end_effector_action'
@@ -50,10 +54,6 @@ function commandsFromRequest(body)
     throw new CommandValidationError(`Unsupported field(s): ${unknownFields.join(', ')}`);
   }
 
-  if (Object.prototype.hasOwnProperty.call(body, 'plate_joint_action')) 
-  {
-    throw new CommandValidationError('plate_joint_action must be handled by the base/rotation controller.');
-  }
 
   for (const field of actionFields) 
   {
@@ -63,7 +63,9 @@ function commandsFromRequest(body)
 
     if (action === 'STOP') 
     {
-      if (field === 'shoulder_joint_action') 
+      if (field === 'plate_joint_action') {
+        commands.push(COMMANDS.ARM_STOP_ROTATE);
+      }else if (field === 'shoulder_joint_action') 
       {
         commands.push(COMMANDS.ARM_STOP_SHOULDER);
       } 
@@ -79,8 +81,15 @@ function commandsFromRequest(body)
       continue;
     }
 
-    if (field === 'shoulder_joint_action') 
-    {
+    if (field === 'plate_joint_action') {
+      if (action === 'POSITIVE') {
+        commands.push(COMMANDS.ARM_ROTATE_CW);
+      } else if (action === 'NEGATIVE') {
+        commands.push(COMMANDS.ARM_ROTATE_CCW);
+      } else {
+        throw new CommandValidationError(`Invalid base action: ${action}`);
+      }
+    } else if (field === 'shoulder_joint_action') {
       if (action === 'POSITIVE') 
       {
         commands.push(COMMANDS.ARM_FWD_SHOULDER);
