@@ -1,4 +1,5 @@
 import React from 'react';
+import Slider from '@react-native-community/slider';
 import Modal from "react-native-modal";
 import EZRASSOR from 'ezrassor-app/src/api/ezrassor-service-paver-arm' 
 import ControllerStyle from 'ezrassor-app/src/styles/controllerPaverArm';
@@ -44,6 +45,10 @@ export default class ControllerScreen extends React.Component {
       isForearmSelected: false,
       isEndEffectorSelected: false,
       offlineMode: false,
+      baseSpeed: 50,
+      shoulderSpeed: 50,
+      forearmSpeed: 50,
+      wristSpeed: 50,
     }; 
 
     this.EZRASSOR = new EZRASSOR(this.state.ip);
@@ -232,6 +237,43 @@ export default class ControllerScreen extends React.Component {
       </View>
     );
   }
+  renderSpeedSlider(label, stateKey) {
+    return (
+      <View style={{marginBottom: 4}}>
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <Text style={{ color: '#fff', fontSize: 13 }}>
+            {label}
+          </Text>
+
+          <Text style={{ color: '#fff', fontSize: 13 }}>
+            {this.state[stateKey]}%
+          </Text>
+        </View>
+
+        <Slider
+          style={{ width: '100%', height: 28 }}
+          minimumValue={0}
+          maximumValue={100}
+          step={1}
+          value={this.state[stateKey]}
+          onValueChange={(value) =>
+            this.setState({
+              [stateKey]: Math.round(value),
+            })
+          }
+          minimumTrackTintColor="#66BB6A"
+          maximumTrackTintColor="#9ba4a4"
+          thumbTintColor="#ffffff"
+        />
+      </View>
+    );
+  }
   render() {
 
     // Loading font
@@ -409,24 +451,6 @@ export default class ControllerScreen extends React.Component {
                   'arrow-down',
                   ControllerStyle.mainButtonTextVertical
                 )}
-              </ImageBackground>
-
-              <View style={{ flex: 1, marginHorizontal: 10, marginBottom: 10 }}>
-                <View
-                  style={[
-                    ControllerStyle.cameraPlaceholder,
-                    { flex: 3, marginHorizontal: 0 }
-                  ]}
-                >
-                  <FontAwesome name="video-camera" size={44} color="#9ba4a4" />
-                  <Text style={ControllerStyle.cameraPlaceholderTitle}>
-                    CAMERA FEED
-                  </Text>
-                  <Text style={ControllerStyle.cameraPlaceholderText}>
-                    Reserved for the arm camera
-                  </Text>
-                </View>
-
                 {this.renderJointControl( 
                   'Base',
                   Robot.PLATE,
@@ -436,6 +460,61 @@ export default class ControllerScreen extends React.Component {
                   'rotate-right',
                   ControllerStyle.mainButtonTextHorizontal
                 )}
+              </ImageBackground>
+
+              <View style={{ flex: 1, marginHorizontal: 10, marginBottom: 10 }}>
+
+                {/* Camera viewport */}
+                <View
+                  style={[
+                    ControllerStyle.cameraPlaceholder,
+                    { flex: 3, marginHorizontal: 0 }
+                  ]}
+                >
+                  <FontAwesome
+                    name="video-camera"
+                    size={44}
+                    color="#9ba4a4"
+                  />
+
+                  <Text style={ControllerStyle.cameraPlaceholderTitle}>
+                    CAMERA FEED
+                  </Text>
+
+                  <Text style={ControllerStyle.cameraPlaceholderText}>
+                    Reserved for the arm camera
+                  </Text>
+                </View>
+
+                {/* Joint speed controls underneath viewport */}
+                <View
+                  style={{
+                    flex: 2,
+                    marginTop: 8,
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    backgroundColor: '#454949',
+                    borderRadius: 8,
+                    justifyContent: 'space-evenly',
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: '#fff',
+                      fontSize: 15,
+                      fontWeight: 'bold',
+                      marginBottom: 4,
+                    }}
+                  >
+                    JOINT SPEED
+                  </Text>
+
+                  {this.renderSpeedSlider('Base', 'baseSpeed')}
+                  {this.renderSpeedSlider('Shoulder', 'shoulderSpeed')}
+                  {this.renderSpeedSlider('Forearm', 'forearmSpeed')}
+                  {this.renderSpeedSlider('Wrist', 'wristSpeed')}
+
+                </View>
               </View>
             </View>
           </View>
