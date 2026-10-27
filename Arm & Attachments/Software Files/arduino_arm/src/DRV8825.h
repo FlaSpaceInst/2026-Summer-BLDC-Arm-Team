@@ -10,6 +10,7 @@ private:
     bool _direction;
     long _steps_per_revolution;
     bool _enabled;
+    bool _moving = false;
     bool _invert_dir;
 
     bool _current_state = LOW;

@@ -297,9 +297,23 @@ void read_serial() {
       last_command = RIGHT;
     if (command == "LEFT")
       last_command = LEFT;
-    if (command == "STOP")
+    if (command == "STOP") {
       last_command = STOP;
-    
+    }
+    else if (command == "ARM_CW") {
+      last_command = ARM_ROTATE_CW;
+    }
+    else if (command == "ARM_CCW") {
+      last_command = ARM_ROTATE_CCW;
+    }
+    else if (command == "ARM_STOP") {
+      last_command = ARM_STOP_ROTATE;
+    }
+    else if (command != "FWD" && command != "REV" && command != "LEFT" && command != "RIGHT") {
+      // Unknown input must never replay the previous wheel command.
+      return;
+    }
+
     switch (last_command) {
       case STOP:
         stop = 1;

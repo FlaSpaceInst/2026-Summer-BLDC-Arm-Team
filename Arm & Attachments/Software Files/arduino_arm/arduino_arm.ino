@@ -156,9 +156,9 @@ void read_serial() {
       case REV:
       case LEFT:
       case RIGHT:
-      case ARM_OPEN_EFFECTOR:
-      case ARM_CLOSE_EFFECTOR:
-      case ARM_STOP_EFFECTOR:
+      case OPEN_EFFECTOR:
+      case CLOSE_EFFECTOR:
+      case STOP_EFFECTOR:
       case ARM_ROTATE_CW:
       case ARM_ROTATE_CCW:
       case ARM_STOP_ROTATE:

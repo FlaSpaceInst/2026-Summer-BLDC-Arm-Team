@@ -23,6 +23,14 @@ DRV8825::DRV8825(unsigned short step_pin, unsigned short dir_pin, unsigned short
 #define US_IN_MIN 60000000
 void DRV8825::set_speed(long rpm)
 {
+    // A STOP must never divide by zero or generate another step pulse.
+    if (rpm <= 0) {
+        _moving = false;
+        _current_state = LOW;
+        digitalWrite(_step_pin, LOW);
+        return;
+    }
+    _moving = true;
     // _step_delay is in us
     _step_delay = US_IN_MIN / (rpm * _steps_per_revolution);
     _step_delay *= (6.0 / 7);
@@ -33,7 +41,10 @@ void DRV8825::set_speed(long rpm)
 
 void DRV8825::update()
 {
-    long m = micros();
+    if (!_moving) {
+        return;
+    }
+    unsigned long m = micros();
     if (m - _last_step_time >= _step_delay)
     {
         _last_step_time = m;
