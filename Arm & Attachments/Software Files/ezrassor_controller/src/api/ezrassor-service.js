@@ -1,5 +1,5 @@
-import { Robot, WheelOperation, Operation } from 'ezrassor-app/src/enumerations/robot-commands';
-import HTTP from 'ezrassor-app/src/api/web-commands';
+import { Robot, WheelOperation, Operation } from '../enumerations/robot-commands';
+import HTTP from '../api/web-commands';
 
 const DEFAULT_EXT = '/';
 

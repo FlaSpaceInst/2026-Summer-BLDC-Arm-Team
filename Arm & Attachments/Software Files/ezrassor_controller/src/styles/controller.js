@@ -36,7 +36,6 @@ const ControllerStyle = StyleSheet.create({
   splashFsiLogo: {
     height: '55%',
     width: '55%',
-    resizeMode: 'contain',
     backgroundColor: '#2E3030',
     marginTop: 70
   },
@@ -386,6 +385,189 @@ const ControllerStyle = StyleSheet.create({
     fontFamily: 'NASA',
     fontSize: normalize(19, 1),
     color: '#fff',
+  },
+
+  // Connection outcome screens: retain the original gray/NASA theme while
+  // using bounded sizes instead of percentage heights that collapse on web.
+  statusScreenLoading: {
+    flex: 1,
+    backgroundColor: '#2E3030'
+  },
+
+  statusScreenScroll: {
+    flex: 1,
+    backgroundColor: '#2E3030'
+  },
+
+  statusScreenContent: {
+    flexGrow: 1,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 24
+  },
+
+  statusScreenContentCompact: {
+    paddingHorizontal: 12,
+    paddingVertical: 14
+  },
+
+  statusScreenContentShort: {
+    paddingVertical: 10
+  },
+
+  statusScreenTitle: {
+    width: '80%',
+    maxWidth: 840,
+    minHeight: 76,
+    borderRadius: 15,
+    backgroundColor: '#4a4d4e',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10
+  },
+
+  statusScreenTitleCompact: {
+    width: '100%',
+    minHeight: 58,
+    paddingVertical: 8
+  },
+
+  statusScreenTitleShort: {
+    minHeight: 52
+  },
+
+  statusScreenTitleText: {
+    fontFamily: 'NASA',
+    color: '#fff',
+    fontSize: 46,
+    textAlign: 'center'
+  },
+
+  statusScreenTitleTextCompact: {
+    fontSize: 30
+  },
+
+  statusScreenBody: {
+    flexGrow: 1,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20
+  },
+
+  statusScreenBodyShort: {
+    paddingVertical: 8
+  },
+
+  statusScreenCard: {
+    width: '100%',
+    maxWidth: 620,
+    minHeight: 280,
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 24
+  },
+
+  statusScreenCardCompact: {
+    minHeight: 240,
+    paddingHorizontal: 14,
+    paddingVertical: 18
+  },
+
+  statusScreenCardShort: {
+    minHeight: 205,
+    paddingVertical: 12
+  },
+
+  statusScreenIcon: {
+    width: 96,
+    height: 96,
+    resizeMode: 'contain'
+  },
+
+  statusScreenIconShort: {
+    width: 70,
+    height: 70
+  },
+
+  statusScreenMessage: {
+    fontFamily: 'NASA',
+    fontSize: 30,
+    lineHeight: 38,
+    color: '#171919',
+    textAlign: 'center',
+    marginVertical: 16,
+    flexShrink: 1
+  },
+
+  statusScreenMessageCompact: {
+    fontSize: 23,
+    lineHeight: 30
+  },
+
+  statusScreenMessageShort: {
+    fontSize: 21,
+    lineHeight: 27,
+    marginVertical: 10
+  },
+
+  statusScreenAction: {
+    minWidth: 144,
+    minHeight: 54,
+    borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#3F4142',
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+
+  statusScreenActionText: {
+    fontFamily: 'NASA',
+    fontSize: 30,
+    color: '#fff',
+    textAlign: 'center'
+  },
+
+  statusScreenFooter: {
+    width: '100%',
+    maxWidth: 1200,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8
+  },
+
+  statusScreenFooterCompact: {
+    paddingHorizontal: 0
+  },
+
+  statusScreenLogo: {
+    width: 126,
+    height: 64,
+    resizeMode: 'contain'
+  },
+
+  statusScreenHelp: {
+    minWidth: 126,
+    minHeight: 52,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+
+  statusScreenHelpText: {
+    fontFamily: 'NASA',
+    fontSize: 28,
+    color: '#171919',
+    textAlign: 'center'
   },
 
   statusButton: {

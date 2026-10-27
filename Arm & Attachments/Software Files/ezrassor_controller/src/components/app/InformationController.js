@@ -5,12 +5,15 @@ import {
   View,
   Pressable,
   TouchableHighlight,
+  Platform,
+  ScrollView,
+  Dimensions
 } from "react-native";
 import Modal from "react-native-modal";
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
-import PaverArmControllerStyle from 'ezrassor-app/src/styles/controllerPaverArm';
-import ControllerStyle from "ezrassor-app/src/styles/controller";
+import PaverArmControllerStyle from '../../styles/controllerPaverArm';
+import ControllerStyle from "../../styles/controller";
 
 /**
  * Modal-like React component to show the about-the-app info while in <ControllerScreen>.
@@ -21,6 +24,7 @@ export default class InformationController extends React.Component {
     super(props);
 
     this.state = {
+      viewportWidth: Dimensions.get('window').width,
       devModalVisible: false,
       helpModalVisible: false,
     };
@@ -35,15 +39,37 @@ export default class InformationController extends React.Component {
   }
 
   componentDidMount() {
-    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+    this.dimensionSubscription = Dimensions.addEventListener('change', ({ window }) => {
+      this.setState({ viewportWidth: window.width });
+    });
+    if (Platform.OS !== 'web') {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE).catch((error) => {
+        console.warn('Unable to lock orientation:', error);
+      });
+    }
+  }
+
+  componentWillUnmount() {
+    this.dimensionSubscription?.remove();
   }
 
   render() {
+    const isNarrowWeb = Platform.OS === 'web' && this.state.viewportWidth < 760;
+    let bodyDirection = 'row';
+    if (isNarrowWeb) {
+      bodyDirection = 'column';
+    }
     return (
-      <View style={{ flexDirection: "row" }}>
+      <ScrollView
+        style={{ flexGrow: 0, width: '100%' }}
+        contentContainerStyle={{ flexDirection: bodyDirection, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', paddingVertical: 10 }}
+      >
 
         {/* Left-side of modal. */}
-        <View style={ControllerStyle.columnHeader}>
+        <View style={[
+          ControllerStyle.columnHeader,
+          isNarrowWeb && { flex: 0, width: '94%', marginHorizontal: 0 }
+        ]}>
 
           {/* About-the-team blurb. */}
           <Text style={ControllerStyle.textHeader}>RASSOR Team</Text>
@@ -245,7 +271,10 @@ export default class InformationController extends React.Component {
         <View style={{ flex: 0.5, borderRadius: 20, backgroundColor: "#2e3030", }}></View>
 
         {/* Right-side of modal. */}
-        <View style={ControllerStyle.columnHeader}>
+        <View style={[
+          ControllerStyle.columnHeader,
+          isNarrowWeb && { flex: 0, width: '94%', marginHorizontal: 0 }
+        ]}>
 
           {/* Project-mission blurb. */}
           <Text style={ControllerStyle.textHeader}>Our Mission</Text>
@@ -270,7 +299,7 @@ export default class InformationController extends React.Component {
           </Text>
         </View>
 
-      </View>
+      </ScrollView>
     );
   }
 }

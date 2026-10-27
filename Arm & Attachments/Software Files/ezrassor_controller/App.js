@@ -1,12 +1,10 @@
 import React from "react";
-import SplashScreen from "ezrassor-app/src/components/app/Splash";
-import IPConnectScreen from "ezrassor-app/src/components/app/IPConnect";
-import ConnectionHelp from "ezrassor-app/src/components/app/ConnectionHelp";
-import ConnectionStatusScreen from "ezrassor-app/src/components/app/ConnectionStatus";
-import ControllerScreen from "ezrassor-app/src/components/app/ControllerScreen";
-import LoadingScreen from "ezrassor-app/src/components/app/LoadingScreen";
-import VideoController from "./src/components/app/VideoController";
-import ControllerScreenPaverArm from "./src/components/app/ControllerScreenPaverArm"
+import SplashScreen from "./src/components/app/Splash";
+import IPConnectScreen from "./src/components/app/IPConnect";
+import ConnectionHelp from "./src/components/app/ConnectionHelp";
+import ConnectionStatusScreen from "./src/components/app/ConnectionStatus";
+import ControllerScreen from "./src/components/app/ControllerScreen";
+import LoadingScreen from "./src/components/app/LoadingScreen";
 import { createStackNavigator, TransitionPresets } from '@react-navigation/stack';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
@@ -38,12 +36,14 @@ export default function App() {
         />
         <Stack.Screen
           name="Video Controller Screen"
-          component={VideoController}
+          component={ControllerScreen}
+          initialParams={{ initialMode: 'camera' }}
           options={{ animation: 'none' }}
         />
         <Stack.Screen
           name="Paver Arm Controller Screen"
-          component={ControllerScreenPaverArm}
+          component={ControllerScreen}
+          initialParams={{ initialMode: 'arm' }}
           options={{ animation: 'none' }}
         />
         <Stack.Screen

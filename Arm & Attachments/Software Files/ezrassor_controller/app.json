@@ -11,12 +11,13 @@
     },
     "owner": "ezrassor",
     "name": "EZ-RASSOR Controller",
-    "description": "This controller application has been made for the EZ-RASSOR, an excavation robot that runs on ROS2.",
+    "description": "Controller for the RE-RASSOR rover and paver arm.",
     "slug": "EZRASSORController",
     "privacy": "public",
     "platforms": [
       "ios",
-      "android"
+      "android",
+      "web"
     ],
     "version": "1.1.1",
     "orientation": "landscape",
@@ -29,6 +30,9 @@
     ],
     "ios": {
       "supportsTablet": true
+    },
+    "web": {
+      "bundler": "webpack"
     }
   }
 }

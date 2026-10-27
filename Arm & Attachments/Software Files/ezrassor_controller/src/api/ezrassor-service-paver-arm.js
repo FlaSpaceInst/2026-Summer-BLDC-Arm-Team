@@ -1,5 +1,5 @@
-import {Robot, Operation} from 'ezrassor-app/src/enumerations/robot-commands-paver-arm';
-import HTTP from 'ezrassor-app/src/api/web-commands';
+import {Robot, Operation} from '../enumerations/robot-commands-paver-arm';
+import HTTP from '../api/web-commands';
 
 const DEFAULT_EXT = '/';
 
@@ -9,6 +9,7 @@ export default class EZRASSOR {
         this.host = host;
         this.route = route;
         this.setCoordinate('0,0');
+        this._commandQueue = Promise.resolve();
         this._twistMsg = {
             plate_joint_action: 'STOP',
             shoulder_joint_action: 'STOP',
@@ -44,7 +45,10 @@ export default class EZRASSOR {
     }
 
     setCoordinate(combinedCoordinate) {
-        const coordinates = (typeof combinedCoordinate === 'string') ? combinedCoordinate.trim() : '0,0';
+        let coordinates = '0,0';
+        if (typeof combinedCoordinate === 'string') {
+            coordinates = combinedCoordinate.trim();
+        }
         const split = coordinates.split(',');
 
         const x = split[0] || '0';
@@ -84,6 +88,14 @@ export default class EZRASSOR {
         this._twistMsg = { partial_autonomy: instruction };
     }
 
+    // Keep quick press/release/reverse requests in their original order.
+    // One HTTP request is sent per control event.
+    sendCommand(message) {
+        const operation = this._commandQueue.then(() => HTTP.doPost(this.apiPath, message, DEFAULT_EXT));
+        this._commandQueue = operation.catch(() => {});
+        return operation;
+    }
+
     // Stop all paver arm operations and send the stop command.
     allStop = () => {
         this._twistMsg = {
@@ -93,7 +105,7 @@ export default class EZRASSOR {
             end_effector_action: Operation.STOP
         };
 
-        return HTTP.doPost(this.apiPath, this.twistMsg, DEFAULT_EXT);
+        return this.sendCommand(this.twistMsg);
     };
 
     // Execute the corresponding paver arm command.
@@ -116,13 +128,11 @@ export default class EZRASSOR {
                 this.updateTwistMsg({ end_effector_action: operation });
                 break;
             case Robot.AUTONOMY:
-                this.updateAutonomyTwistMsg(operation);
-                break;
+                return Promise.reject(new Error('Autonomous arm control is not implemented.'));
             default:
-                console.log('Invalid robot part selected');
-                return;
+                return Promise.reject(new Error('Invalid robot part selected.'));
         }
 
-        return HTTP.doPost(this.apiPath, this.twistMsg, DEFAULT_EXT);
+        return this.sendCommand(this.twistMsg);
     }
 }

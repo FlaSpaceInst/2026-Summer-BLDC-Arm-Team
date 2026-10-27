@@ -1,10 +1,10 @@
 import React from 'react';
-import Modal from "react-native-modal";
-import EZRASSOR from 'ezrassor-app/src/api/ezrassor-service-paver-arm' 
-import ControllerStyle from 'ezrassor-app/src/styles/controllerPaverArm';
-import {Robot, Operation} from 'ezrassor-app/src/enumerations/robot-commands-paver-arm';
-import FadeInView from "ezrassor-app/src/components/app/FadeInView";
-import { isIpReachable } from '../../functionality/connection';
+import Modal from './ControllerModal';
+import EZRASSOR from '../../api/ezrassor-service-paver-arm' 
+import ControllerStyle from '../../styles/controllerPaverArm';
+import {Robot, Operation} from '../../enumerations/robot-commands-paver-arm';
+import FadeInView from "../../components/app/FadeInView";
+
 import {
   Text,
   View,
@@ -13,14 +13,27 @@ import {
   TouchableHighlight,
   TouchableOpacity,
   StatusBar,
+  ScrollView,
+  TextInput,
+  Platform,
+  Dimensions,
 } from 'react-native';
 import { FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Font  from 'expo-font';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getWebLayout } from '../../functionality/web-layout';
 
-const CONNECTION_POLLING_INTERVAL = 2000;
-const CONNECTION_POLLING_TIMEOUT = 4000;
-const CONNECTION_POLLING_VERBOSE = false;
+const DEFAULT_BRIDGE_PORT = '3000';
+
+function defaultBridgeHost(roverIp) {
+  if (!roverIp) {
+    return '127.0.0.1:' + DEFAULT_BRIDGE_PORT;
+  }
+  const stripped = roverIp.replace(/^https?:\/\//, '').split('/')[0];
+  const hostName = stripped.split(':')[0];
+  return hostName + ':' + DEFAULT_BRIDGE_PORT;
+}
+
 
 
 
@@ -44,6 +57,14 @@ export default class ControllerScreen extends React.Component {
       isForearmSelected: false,
       isEndEffectorSelected: false,
       offlineMode: false,
+      bridgeIp: '127.0.0.1:3000',
+      bridgeReady: false,
+      baseAvailable: false,
+      bridgeMessage: 'CHECK BRIDGE before moving',
+      bridgeModalVisible: false,
+      activeMotion: '',
+      screenWidth: Dimensions.get('window').width,
+      screenHeight: Dimensions.get('window').height,
     }; 
 
     this.EZRASSOR = new EZRASSOR(this.state.ip);
@@ -51,56 +72,127 @@ export default class ControllerScreen extends React.Component {
 
   async componentDidMount() {
     await Font.loadAsync({ NASA: require('../../../assets/nasa.ttf') });
-    await this.getIpFromStorage();
-    if (this.props.route.params?.currentIp) {
-      this.changeIP(this.props.route.params.currentIp);
+
+    const routeParams = this.props.route.params || {};
+    let roverIp = routeParams.currentIp;
+    if (!roverIp) {
+      roverIp = await AsyncStorage.getItem('myIp');
     }
-
-    const offlineMode = this.props.route.params?.offlineMode === true;
-    this.setState({ isLoading: false, offlineMode });
-
-    this._unsubscribe = this.props.navigation.addListener('focus', async () => {
-      this.getIpFromStorage();
+    let bridgeIp = await AsyncStorage.getItem('armBridgeIp');
+    if (!bridgeIp) {
+      bridgeIp = defaultBridgeHost(roverIp);
+    }
+    this.EZRASSOR.host = bridgeIp;
+    this.setState({
+      isLoading: false,
+      ip: roverIp || '',
+      bridgeIp,
+      offlineMode: routeParams.offlineMode === true
     });
+    this._blur = this.props.navigation.addListener('blur', () => this.releaseActiveMotion());
 
-    // Set up the connection polling logic.
-    if (!offlineMode) {
-      let pollCount = 0;
-      this.connectionPoller = setInterval(async () => {
-        if (await isIpReachable(this.state.ip, CONNECTION_POLLING_TIMEOUT)) {
-          if (CONNECTION_POLLING_VERBOSE) {
-            console.log(`Connection poll attempt ${++pollCount} succeeded...`);
-          }
-        } else {
-          console.log(`Dropped connection from ${this.state.ip}... redirecting to connection screen.`);
-          this.props.navigation.replace('Connection Status Screen', { screen: 'roverDisconnected' });
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      this.onVisibilityChange = () => {
+        if (document.hidden) {
+          this.releaseActiveMotion();
         }
-      }, CONNECTION_POLLING_INTERVAL);
+      };
+      document.addEventListener('visibilitychange', this.onVisibilityChange);
     }
-
-    const pollInterval = (CONNECTION_POLLING_INTERVAL / 1000.0).toFixed(2);
-    const pollTimeout = (CONNECTION_POLLING_TIMEOUT / 1000.0).toFixed(2);
-    console.log(`Polling every ${pollInterval}s with a ${pollTimeout}s timeout.`);
   }
 
-  async componentWillUnmount() {
-    clearInterval(this.connectionPoller);
-
-    this._unsubscribe();
+  componentWillUnmount() {
+    this.releaseActiveMotion();
+    if (this._blur) {
+      this._blur();
+    }
+    if (this.onVisibilityChange && typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.onVisibilityChange);
+    }
   }
 
-  async getIpFromStorage() {
+  async checkBridge() {
+    const bridgeIp = this.state.bridgeIp.trim();
+    this.EZRASSOR.host = bridgeIp;
+    this.setState({ bridgeReady: false, bridgeMessage: 'CHECKING BRIDGE...' });
     try {
-      const ip = await AsyncStorage.getItem('myIp');
+      let url = bridgeIp;
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'http://' + url;
+      }
+      const response = await fetch(url.replace(/\/$/, '') + '/health');
+      if (!response.ok) {
+        throw new Error('HTTP ' + response.status);
+      }
+      const status = await response.json();
+      if (!status.armOpen || !status.handOpen) {
+        throw new Error('Arm or hand Arduino is disconnected.');
+      }
+      await AsyncStorage.setItem('armBridgeIp', bridgeIp);
+      let bridgeMessage = 'ARM + HAND CONNECTED (BASE UNAVAILABLE)';
+      if (status.wheelsOpen) {
+        bridgeMessage = 'ARM, HAND, WHEELS CONNECTED';
+      }
+      this.setState({
+        bridgeReady: true,
+        baseAvailable: !!status.wheelsOpen,
+        offlineMode: false,
+        bridgeModalVisible: false,
+        bridgeMessage
+      });
+    } catch (error) {
+      this.setState({ bridgeReady: false, bridgeMessage: 'BRIDGE UNAVAILABLE: ' + error.message });
+    }
+  }
 
-      if (ip != null) {
-        this.changeIP(ip);
+  async sendOperation(part, operation) {
+    if (!this.state.bridgeReady && operation !== Operation.STOP) {
+      return;
+    }
+    try {
+      await this.EZRASSOR.executeRobotCommand(part, operation);
+      if (operation === Operation.STOP && part === Robot.ALL) {
+        this.setState({ activeMotion: '', bridgeMessage: 'STOP SENT' });
       }
     } catch (error) {
-      // Error retrieving data. Do nothing.
+      this.setState({ bridgeReady: false, activeMotion: '', bridgeMessage: 'COMMAND FAILED / STOP NOT CONFIRMED: ' + error.message });
     }
   }
-// copy paste ends here
+
+  pressMotion(part, operation, label) {
+    if (!this.state.bridgeReady || (part === Robot.PLATE && !this.state.baseAvailable)) {
+      return;
+    }
+    this.selectArmPart(part);
+    if (this.activePart && (this.activePart !== part || this.activeAction !== operation)) {
+      this.sendOperation(this.activePart, Operation.STOP);
+    }
+    this.activePart = part;
+    this.activeAction = operation;
+    this.setState({ activeMotion: label, bridgeMessage: 'MOVING: ' + label });
+    this.sendOperation(part, operation);
+  }
+
+  releaseActiveMotion() {
+    this.releaseMotion(this.activePart);
+  }
+
+  releaseMotion(part) {
+    if (!part || part !== this.activePart) {
+      return;
+    }
+    this.activePart = null;
+    this.activeAction = null;
+    this.setState({ activeMotion: '', bridgeMessage: 'STOP REQUESTED' });
+    this.sendOperation(part, Operation.STOP);
+  }
+
+  emergencyStop() {
+    this.activePart = null;
+    this.activeAction = null;
+    this.setState({ activeMotion: '', bridgeMessage: 'SENDING ARM STOP...' });
+    this.sendOperation(Robot.ALL, Operation.STOP);
+  }
 
   setAutonomyModalVisible(visible) {
     this.setState({ autonomyModalVisible: visible });
@@ -128,17 +220,47 @@ export default class ControllerScreen extends React.Component {
     });
   }
 
-  changeIP(text){
-    this.setState({ip:text}, () => {
-      this.EZRASSOR.host = this.state.ip;
-    });
+  changeIP(text) {
+    // Rover address and arm-bridge address are configured independently.
+    this.setState({ ip: text });
   }
 
-  // Update animation frame before processing click so that opacity can change on click 
-  sendOperation(part, operation) {
-    requestAnimationFrame(() => {
-      this.EZRASSOR.executeRobotCommand(part, operation);
-    });
+  getArmPanelFlex() {
+    if (this.getBodyDirection() === 'row') {
+      return 1;
+    }
+    return 0;
+  }
+
+  getArmPanelWidth() {
+    if (this.getBodyDirection() === 'row') {
+      return undefined;
+    }
+    return '100%';
+  }
+
+  getArmBodyMinimumHeight() {
+    if (this.getBodyDirection() === 'column') {
+      return 800;
+    }
+    return 510;
+  }
+
+  getCameraPanelMinimumHeight() {
+    if (this.getBodyDirection() === 'column') {
+      return 245;
+    }
+    return 520;
+  }
+
+  getBodyDirection() {
+    if (Platform.OS === 'web' && this.state.screenWidth < 800) {
+      return 'column';
+    }
+    if (this.state.screenWidth >= 880) {
+      return 'row';
+    }
+    return 'column';
   }
 
   renderDefaultArm = () => {   
@@ -211,9 +333,11 @@ export default class ControllerScreen extends React.Component {
         <View style={{flex: 2, flexDirection: 'row'}}>
           <View style={ControllerStyle.buttonBackground}>
             <TouchableOpacity
-              onPressIn={() => this.sendJointOperation(part, Operation.POSITIVE)}
-              onPressOut={() => this.sendOperation(part, Operation.STOP)}
-              hitSlop={{top: 20, bottom: 20, left: 70, right: 70}}>
+              disabled={!this.state.bridgeReady || (part === Robot.PLATE && !this.state.baseAvailable)}
+              style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+              onPressIn={() => this.pressMotion(part, Operation.POSITIVE, label + ' ' + positiveLabel)}
+              onPressOut={() => this.releaseMotion(part)}
+              hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
               <Text style={textStyle}>{positiveLabel}</Text>
               <FontAwesome style={ControllerStyle.buttonImage} name={positiveIcon} size={35} color='#fff'/>
             </TouchableOpacity>
@@ -221,9 +345,11 @@ export default class ControllerScreen extends React.Component {
 
           <View style={ControllerStyle.buttonBackground}>
             <TouchableOpacity
-              onPressIn={() => this.sendJointOperation(part, Operation.NEGATIVE)}
-              onPressOut={() => this.sendOperation(part, Operation.STOP)}
-              hitSlop={{top: 20, bottom: 20, left: 70, right: 70}}>
+              disabled={!this.state.bridgeReady || (part === Robot.PLATE && !this.state.baseAvailable)}
+              style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+              onPressIn={() => this.pressMotion(part, Operation.NEGATIVE, label + ' ' + negativeLabel)}
+              onPressOut={() => this.releaseMotion(part)}
+              hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
               <Text style={textStyle}>{negativeLabel}</Text>
               <FontAwesome style={ControllerStyle.buttonImage} name={negativeIcon} size={35} color='#fff'/>
             </TouchableOpacity>
@@ -241,8 +367,16 @@ export default class ControllerScreen extends React.Component {
       );
     }
 
+    const webLayout = getWebLayout(this.state.screenWidth, this.state.screenHeight, Platform.OS);
+
     return ( 
-      <View style={ControllerStyle.container}> 
+      <View style={ControllerStyle.container} onLayout={(event) => {
+        const width = event.nativeEvent.layout.width;
+        const height = event.nativeEvent.layout.height;
+        if (Math.abs(width - this.state.screenWidth) > 10 || Math.abs(height - this.state.screenHeight) > 10) {
+          this.setState({ screenWidth: width, screenHeight: height });
+        }
+      }}> 
         <StatusBar hidden />
 
         {/* Info Popup Modal*/}
@@ -284,7 +418,7 @@ export default class ControllerScreen extends React.Component {
                 <View style={{ flex: 1}} >
                   <FontAwesome style={{textAlign:'center'}} name="stop-circle-o" size={30} color='#fff'/>
                     <Text style={ControllerStyle.textSmallCenter}> 
-                     Emergency stop for manual movements
+                     Stops arm and gripper. Rover STOP depends on port setup
                     </Text>
                   </View>
 
@@ -302,35 +436,11 @@ export default class ControllerScreen extends React.Component {
           </TouchableHighlight>
         </Modal>        
 
-        {/* Autonomy Popup Modal*/}
-        <Modal
-          style={ControllerStyle.modalViewContainer}
-          isVisible={this.state.autonomyModalVisible}
-          onSwipeComplete={() => this.setAutonomyModalVisible(false)}
-          swipeDirection='down'
-          onRequestClose={() => this.setAutonomyModalVisible(!this.state.autonomyModalVisible)}>
-    
-          <TouchableHighlight style={{ flex: 1, marginHorizontal: 15, justifyContent: 'center' }}>
-            <View>
-              <View style={{ flexDirection: 'row', marginVertical: 15, justifyContent: 'center' }}>
-                <Text style={ControllerStyle.textLarge}>Activate Autonomous Arm Function(s)</Text>
-              </View>
-              <View style={{ flexDirection: 'row', marginVertical: 15, justifyContent: 'center' }}> 
-                  <TouchableOpacity style={ControllerStyle.modalButton} onPress={() => {this.sendOperation(Robot.AUTONOMY, Operation.PICKUP)}}>
-                    <Text style={ControllerStyle.textSmall}>Pick Up Paver</Text> 
-                  </TouchableOpacity> 
-                  <TouchableOpacity style={ControllerStyle.modalButton} onPress={() => {this.sendOperation(Robot.AUTONOMY, Operation.PLACE)}}>
-                    <Text style={ControllerStyle.textSmall}>Place Paver</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={ControllerStyle.modalButton} onPress={() => {this.sendOperation(Robot.AUTONOMY, Operation.HOME)}}>
-                    <Text style={ControllerStyle.textSmall}>Return Home</Text>
-                  </TouchableOpacity>
-              </View>
-            </View>
-          </TouchableHighlight>
-        </Modal>
-        
-        <FadeInView style={ControllerStyle.headerContainer}>
+        <FadeInView style={[
+          ControllerStyle.headerContainer,
+          webLayout.isWeb && { flex: 0, flexShrink: 0, minHeight: 76, width: '98%', maxWidth: 1500, alignSelf: 'center' },
+          webLayout.isCompact && { minHeight: 106, padding: 6 }
+        ]}>
           {/* Info button */}
           <TouchableOpacity style={{ flex: 1, padding: 3}} onPress={() => this.setInfoModalVisible(true)}>
             <FontAwesome 
@@ -341,18 +451,22 @@ export default class ControllerScreen extends React.Component {
           {/* Set-IP button. */}
           <TouchableOpacity
               style={{ flex: 1, padding: 1 }}
-              onPress={() => this.props.navigation.replace("IPConnect Screen")}>
+              onPress={() => this.setState({ bridgeModalVisible: true })}>
               <FontAwesome 
                 name="wifi" 
                 size={30} color="#fff" />
           </TouchableOpacity>
 
-          <Text style={ControllerStyle.textSmall}>RE-RASSOR Paver Arm Controller</Text>
+          <Text style={[
+            ControllerStyle.textSmall,
+            webLayout.isWeb && { flexShrink: 1, textAlign: 'center', fontSize: 20 },
+            webLayout.isCompact && { fontSize: 16 }
+          ]}>RE-RASSOR Paver Arm Controller</Text>
 
           {/* BACK button to go back to the controller screen */}
           <TouchableOpacity
             style={{ flex: 1, padding: 3 }}
-            onPress={() => this.props.navigation.replace("Controller Screen", { currentIp: this.state.ip, offlineMode: this.state.offlineMode })}
+            onPress={() => { this.releaseActiveMotion(); this.props.navigation.replace("Controller Screen", { currentIp: this.state.ip, offlineMode: this.state.offlineMode }); }}
             >
               <FontAwesome
                 style={{ marginLeft: 'auto' }}
@@ -362,65 +476,100 @@ export default class ControllerScreen extends React.Component {
           </TouchableOpacity>
           
           {/* Stop button */}
-          <TouchableOpacity style={{ flex: 1, padding: 3}} onPress={() => {this.sendOperation(Robot.ALL, Operation.STOP)}}>
-            <FontAwesome name="stop-circle-o" style={{marginLeft: "auto"}} size={35} color='#fff'/>
+          <TouchableOpacity style={{ flex: 1, padding: 3}} onPress={() => this.emergencyStop()}>
+            <FontAwesome name="stop-circle-o" style={{marginLeft: "auto"}} size={35} color="#ffb3b3"/>
+            <Text style={{ fontSize: 10, color: '#fff', textAlign: 'right' }}>ARM STOP</Text>
           </TouchableOpacity>
 
-          {/* Autonomy button for arm */}
-          <TouchableOpacity style={{ flex: 1}} onPress={() => { this.setAutonomyModalVisible(true)}}> 
-            <MaterialCommunityIcons style={{marginLeft: "auto"}} name="robot" size={32} color='#fff'/>
-          </TouchableOpacity>
         </FadeInView>
 
-        {/* Arm control mode: three joint-control groups with two direction buttons per joint. */}
-        <FadeInView style={ControllerStyle.buttonLayoutContainer}>
-          <View style={ControllerStyle.ArmContainer}> 
-            <View style={{flex: 2, flexDirection: 'row'}}>
-              <ImageBackground
-                source={this.getSelectedArmVisual()}
-                style={ControllerStyle.armControlColumn}
-                imageStyle={ControllerStyle.armControlBackgroundImage}
-                resizeMode="contain"
-              >
-                {this.renderJointControl(
-                  'Wrist',
-                  Robot.ENDEFFECTOR,
-                  'Up',
-                  'Down',
-                  'arrow-up',
-                  'arrow-down',
-                  ControllerStyle.mainButtonTextVertical
-                )}
-                {this.renderJointControl(
-                  'Forearm',
-                  Robot.FOREARM,
-                  'Up',
-                  'Down',
-                  'arrow-up',
-                  'arrow-down',
-                  ControllerStyle.mainButtonTextVertical
-                )}
-                {this.renderJointControl(
-                  'Shoulder',
-                  Robot.SHOULDER,
-                  'Up',
-                  'Down',
-                  'arrow-up',
-                  'arrow-down',
-                  ControllerStyle.mainButtonTextVertical
-                )}
-              </ImageBackground>
 
-              <View style={ControllerStyle.cameraPlaceholder}>
-                <FontAwesome name="video-camera" size={44} color="#9ba4a4" />
-                <Text style={ControllerStyle.cameraPlaceholderTitle}>CAMERA FEED</Text>
-                <Text style={ControllerStyle.cameraPlaceholderText}>
-                  Reserved for the arm camera
-                </Text>
-              </View>
+        <Modal
+          style={ControllerStyle.modalViewContainer}
+          isVisible={this.state.bridgeModalVisible}
+          onRequestClose={() => this.setState({ bridgeModalVisible: false })}>
+          <View style={{ padding: 24 }}>
+            <Text style={ControllerStyle.textSmall}>ARM BRIDGE IP:PORT</Text>
+            <TextInput
+              accessibilityLabel="Arm bridge address"
+              value={this.state.bridgeIp}
+              onChangeText={(bridgeIp) => this.setState({ bridgeIp, bridgeReady: false })}
+              autoCapitalize="none"
+              style={ControllerStyle.ipInputBoxMedium}
+            />
+            <TouchableOpacity style={ControllerStyle.modalButton} onPress={() => this.checkBridge()}>
+              <Text style={ControllerStyle.textSmall}>CHECK BRIDGE</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={{ padding: 14, alignItems: 'center' }} onPress={() => this.setState({ bridgeModalVisible: false })}>
+              <Text style={ControllerStyle.textSmall}>CANCEL</Text>
+            </TouchableOpacity>
+          </View>
+        </Modal>
+        <View style={{ width: '100%', paddingHorizontal: 16, paddingVertical: 7, flexDirection: 'row', alignItems: 'center', backgroundColor: '#2e3030' }}>
+          <Text style={{ color: '#fff', flex: 1, fontSize: 12 }}>{this.state.bridgeMessage}</Text>
+          <TouchableOpacity onPress={() => this.checkBridge()} style={{ padding: 7, backgroundColor: '#5D6061', borderRadius: 5 }}>
+            <Text style={{ color: '#fff', fontSize: 12 }}>CHECK BRIDGE</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Original arm graphics and controls, kept compact on wide browsers. */}
+        <ScrollView
+          style={{ flex: 1, width: '100%' }}
+          contentContainerStyle={{
+            flexGrow: 1,
+            width: '100%',
+            maxWidth: 1330,
+            alignSelf: 'center',
+            paddingHorizontal: 12,
+            paddingVertical: 12
+          }}
+        >
+          <View style={{
+            flexDirection: this.getBodyDirection(),
+            alignItems: 'stretch',
+            justifyContent: 'center',
+            flexGrow: 1,
+            minHeight: this.getArmBodyMinimumHeight(),
+            gap: 12
+          }}>
+            <ImageBackground
+              source={this.getSelectedArmVisual()}
+              resizeMode="contain"
+              imageStyle={ControllerStyle.armControlBackgroundImage}
+              style={[
+                ControllerStyle.armControlColumn,
+                {
+                  flex: this.getArmPanelFlex(),
+                  width: this.getArmPanelWidth(),
+                  maxWidth: 610,
+                  minHeight: 520,
+                  marginLeft: 0,
+                  alignSelf: 'center'
+                }
+              ]}
+            >
+              {this.renderJointControl('Base', Robot.PLATE, 'CW', 'CCW', 'rotate-right', 'rotate-left', ControllerStyle.mainButtonTextVertical)}
+              {this.renderJointControl('Gripper', Robot.ENDEFFECTOR, 'Open', 'Close', 'arrow-up', 'arrow-down', ControllerStyle.mainButtonTextVertical)}
+              {this.renderJointControl('Forearm', Robot.FOREARM, 'Up', 'Down', 'arrow-up', 'arrow-down', ControllerStyle.mainButtonTextVertical)}
+              {this.renderJointControl('Shoulder', Robot.SHOULDER, 'Up', 'Down', 'arrow-up', 'arrow-down', ControllerStyle.mainButtonTextVertical)}
+            </ImageBackground>
+            <View style={[
+              ControllerStyle.cameraPlaceholder,
+              {
+                flex: this.getArmPanelFlex(),
+                width: this.getArmPanelWidth(),
+                maxWidth: 650,
+                minHeight: this.getCameraPanelMinimumHeight(),
+                alignSelf: 'center',
+                margin: 0
+              }
+            ]}>
+              <FontAwesome name="video-camera" size={44} color="#9ba4a4" />
+              <Text style={ControllerStyle.cameraPlaceholderTitle}>CAMERA FEED</Text>
+              <Text style={ControllerStyle.cameraPlaceholderText}>Reserved for the arm camera</Text>
             </View>
           </View>
-        </FadeInView>
+        </ScrollView>
       </View>
     );
   }

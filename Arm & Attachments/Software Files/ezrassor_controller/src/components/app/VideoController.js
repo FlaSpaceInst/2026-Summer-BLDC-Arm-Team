@@ -1,16 +1,18 @@
-import { TouchableOpacity, StyleSheet, Text, View, Alert, TouchableHighlight } from 'react-native';
+import { TouchableOpacity, StyleSheet, Text, View, Alert, TouchableHighlight, ScrollView, Platform, Dimensions } from 'react-native';
 import * as React from 'react';
-import Modal from 'react-native-modal';
-import { WebView } from 'react-native-webview';
-import EZRASSOR from 'ezrassor-app/src/api/ezrassor-service';
-import EZARM from 'ezrassor-app/src/api/ezrassor-service-paver-arm'
-import { Robot, ShoulderOperation, DrumOperation, WheelOperation, Operation } from 'ezrassor-app/src/enumerations/robot-commands';
+import Modal from './ControllerModal';
+import CameraFeed from './CameraFeed';
+import EZRASSOR from '../../api/ezrassor-service';
+import EZARM from '../../api/ezrassor-service-paver-arm'
+import { Robot, ShoulderOperation, DrumOperation, WheelOperation, Operation } from '../../enumerations/robot-commands';
 import { isIpReachable } from '../../functionality/connection';
 import { FontAwesome, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Font from 'expo-font';
-import ControllerStyle from 'ezrassor-app/src/styles/controller';
-import PaverArmControllerStyle from 'ezrassor-app/src/styles/controllerPaverArm';
-import VideoStyle from 'ezrassor-app/src/styles/video';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import ControllerStyle from '../../styles/controller';
+import PaverArmControllerStyle from '../../styles/controllerPaverArm';
+import VideoStyle from '../../styles/video';
+import { getWebLayout } from '../../functionality/web-layout';
 
 const VIDEO_EXT_STANDARD = '/video_feed';
 const DETECTION_POLLING_EXTENSION = '/is_detection';
@@ -31,7 +33,10 @@ export default class VideoController extends React.Component {
 
     this.pollForDetection = this.pollForDetection.bind(this);
 
+    const initialSize = Dimensions.get('window');
     this.state = {
+      viewportWidth: initialSize.width,
+      viewportHeight: initialSize.height,
       autonomyModalVisible: false,
       infoModalVisible: false,
       devModalVisible: false,
@@ -58,14 +63,27 @@ export default class VideoController extends React.Component {
    * Load assets required for this component and check connection to IP address
    */
   async componentDidMount() {
+    this.dimensionSubscription = Dimensions.addEventListener('change', ({ window }) => {
+      this.setState({ viewportWidth: window.width, viewportHeight: window.height });
+    });
     await Font.loadAsync({ NASA: require('../../../assets/nasa.ttf') });
     await this.getIpFromStorage();
-    this.state.ip = this.props.route.params.currentIp; // setting ip address
+    const routeIp = this.props.route?.params?.currentIp;
+    const offlineMode = this.props.route?.params?.offlineMode === true;
+    let selectedIp = routeIp;
+    if (!selectedIp) {
+      selectedIp = this.state.ip;
+    }
+    this.state.ip = selectedIp || '';
+    this.offlineMode = offlineMode;
     // important line: sets the IP address for current EZRASSOR instance
     this.EZRASSOR.host = this.state.ip;
 
     // Set IP address to retreive video feed from
-    this.state.videoIp = 'http://' + this.state.ip + VIDEO_EXT_STANDARD;
+    this.state.videoIp = '';
+    if (this.state.ip && !offlineMode) {
+      this.state.videoIp = 'http://' + this.state.ip + VIDEO_EXT_STANDARD;
+    }
 
     // Set IP address to poll for detection report from 
     this.state.pollingRoute = this.state.ip + DETECTION_POLLING_EXTENSION;
@@ -76,14 +94,30 @@ export default class VideoController extends React.Component {
 
     this.setState({ isLoading: false });
 
+    this.videoScreenFocused = true;
     this._unsubscribe = this.props.navigation.addListener('focus', async () => {
-      this.getIpFromStorage();
+      this.videoScreenFocused = true;
+      if (!this.offlineMode) {
+        await this.getIpFromStorage();
+      }
+    });
+    this._blur = this.props.navigation.addListener('blur', () => {
+      this.videoScreenFocused = false;
+      clearInterval(this.connectionPoller);
     });
 
     // Set up the connection polling logic.
     let pollCount = 0;
-    this.connectionPoller = setInterval(async () => {
-      if (await isIpReachable(this.state.ip, CONNECTION_POLLING_TIMEOUT)) {
+    if (!offlineMode && this.state.ip) {
+      this.connectionPoller = setInterval(async () => {
+      if (!this.videoScreenFocused) {
+        return;
+      }
+      const reachable = await isIpReachable(this.state.ip, CONNECTION_POLLING_TIMEOUT);
+      if (!this.videoScreenFocused) {
+        return;
+      }
+      if (reachable) {
         if (CONNECTION_POLLING_VERBOSE) {
           console.log(`Connection poll attempt ${++pollCount} succeeded...`);
         }
@@ -91,11 +125,24 @@ export default class VideoController extends React.Component {
         console.log(`Dropped connection from ${this.state.ip}... redirecting to connection screen.`);
         this.props.navigation.replace('Connection Status Screen', { screen: 'roverDisconnected' });
       }
-    }, CONNECTION_POLLING_INTERVAL);
+      }, CONNECTION_POLLING_INTERVAL);
+    }
 
     const pollInterval = (CONNECTION_POLLING_INTERVAL / 1000.0).toFixed(2);
     const pollTimeout = (CONNECTION_POLLING_TIMEOUT / 1000.0).toFixed(2);
     console.log(`Polling every ${pollInterval}s with a ${pollTimeout}s timeout.`);
+  }
+
+  componentWillUnmount() {
+    this.dimensionSubscription?.remove();
+    clearInterval(this.connectionPoller);
+    clearInterval(this.detectionTask);
+    if (this._blur) {
+      this._blur();
+    }
+    if (this._unsubscribe) {
+      this._unsubscribe();
+    }
   }
 
   setAutonomyModalVisible(invisible) {
@@ -120,6 +167,9 @@ export default class VideoController extends React.Component {
 
   changeXY(combined) {
     this.setState({ xy: combined }, () => {
+      if (this.offlineMode) {
+        return;
+      }
       this.EZRASSOR.setCoordinate(this.state.xy);
     });
   }
@@ -154,6 +204,10 @@ export default class VideoController extends React.Component {
    * Update animation frame before processing click so that opacity can change on click.
    */
   sendOperation(part, operation) {
+    if (this.offlineMode) {
+      return;
+    }
+
     requestAnimationFrame(() => {
       this.EZRASSOR.executeRobotCommand(part, operation);
     });
@@ -164,6 +218,10 @@ export default class VideoController extends React.Component {
    */
   // TODO: verify this sends coordiantes of paver to this function and handle it on the arm service
   sendPickUpOperation(part, operation) {
+    if (this.offlineMode) {
+      return;
+    }
+
     requestAnimationFrame(() => {
       this.EZARM.executeRobotCommand(part, operation)
     });
@@ -175,6 +233,10 @@ export default class VideoController extends React.Component {
    * causing the component to re-render with the new soucre for video feed
    */
   togglePaverDetection() {
+    if (this.offlineMode) {
+      return;
+    }
+
     if (this.state.isDetecting) {
       this.state.isDetecting = false;
       this.stopDetectionPolling();
@@ -282,10 +344,34 @@ export default class VideoController extends React.Component {
 
   render() {
     console.log('Video Feed IP Addr: ' + this.state.videoIp);
+    const webLayout = getWebLayout(this.state.viewportWidth, this.state.viewportHeight, Platform.OS);
+    let ScreenContainer = View;
+    let CameraButtonContainer = View;
+    if (webLayout.isWeb) {
+      ScreenContainer = ScrollView;
+    }
+    if (webLayout.isPhone) {
+      CameraButtonContainer = ScrollView;
+    }
+    const screenContainerProps = {};
+    const buttonContainerProps = {};
+    if (webLayout.isWeb) {
+      screenContainerProps.contentContainerStyle = { flexGrow: 1, minHeight: webLayout.cameraScreenHeight, alignItems: 'stretch' };
+    }
+    if (webLayout.isPhone) {
+      buttonContainerProps.horizontal = true;
+      buttonContainerProps.contentContainerStyle = { minWidth: 560, alignItems: 'stretch', justifyContent: 'space-around', paddingHorizontal: 8 };
+    }
 
     // Use WebView to render the webpage hosting the live video streaming from EZRASSOR
     return (
-      <View style={styles.container}>
+      <ScreenContainer
+        style={[
+          styles.container,
+          webLayout.isWeb && { alignItems: 'stretch', justifyContent: 'flex-start' }
+        ]}
+        {...screenContainerProps}
+      >
 
         {/* Video Controller page Info popup modal. */}
         <Modal
@@ -357,16 +443,40 @@ export default class VideoController extends React.Component {
 
         </Modal>
 
-        <View style={styles.webViewContainer}>
-          <WebView
-            originWhitelist={['*']}
-            source={{ uri: this.state.videoIp }}
-            style={styles.webView}
-          />
+        <View style={[
+          styles.webViewContainer,
+          webLayout.isWeb && { height: undefined, minHeight: webLayout.cameraPanelHeight }
+        ]}>
+          {!!this.state.videoIp && (
+            <CameraFeed
+              originWhitelist={['*']}
+              source={{ uri: this.state.videoIp }}
+              style={[
+                styles.webView,
+                webLayout.isWeb && { marginLeft: 0, marginRight: 0, marginTop: 0, marginBottom: 0, minHeight: webLayout.cameraFeedHeight }
+              ]}
+            />
+          )}
+          {!this.state.videoIp && (
+            <View style={{ flex: 1, minHeight: 330, justifyContent: 'center', alignItems: 'center', backgroundColor: '#2E3030' }}>
+              <FontAwesome name="video-camera" size={42} color="#929c9c" />
+              <Text style={{ fontFamily: 'NASA', color: '#fff', fontSize: 19, marginTop: 12 }}>CAMERA PREVIEW</Text>
+              <Text style={{ color: '#d2d8d8', fontSize: 14, marginTop: 7, textAlign: 'center' }}>
+                Connect to a rover to view the live camera feed.
+              </Text>
+            </View>
+          )}
 
-          <View style={styles.overlayedMenu}>
+          <View style={[
+            styles.overlayedMenu,
+            webLayout.isWeb && { top: 0, height: webLayout.cameraHeaderHeight }
+          ]}>
             {/* Controller screen top row controls. */}
-            <View style={VideoStyle.headerContainer}>
+            <View style={[
+              VideoStyle.headerContainer,
+              webLayout.isWeb && { flex: 0, minHeight: 74, width: '98%', alignSelf: 'center' },
+              webLayout.isCompact && { minHeight: 96, padding: 5 }
+            ]}>
               {/* Info button. */}
               <TouchableOpacity
                 style={{ flex: 1, padding: 3, alignItems: "center" }}
@@ -397,7 +507,11 @@ export default class VideoController extends React.Component {
               </TouchableOpacity>
 
               {/* Title. */}
-              <Text style={ControllerStyle.textMedium}>EZ-RASSOR Controller</Text>
+              <Text style={[
+                ControllerStyle.textMedium,
+                webLayout.isWeb && { fontSize: 20, flexShrink: 1 },
+                webLayout.isCompact && { fontSize: 16 }
+              ]}>EZ-RASSOR Controller</Text>
 
               {/* Stop-rover button. */}
               <TouchableOpacity
@@ -440,7 +554,15 @@ export default class VideoController extends React.Component {
           </View>
 
           {/* Wheel, Shoulder, and Drum buttons */}
-          <View style={styles.buttonContainer}>
+          <CameraButtonContainer
+            {...buttonContainerProps}
+            style={[
+              styles.buttonContainer,
+              webLayout.isWeb && { paddingHorizontal: 12, minHeight: 162 },
+              webLayout.isCompact && { bottom: 0, minHeight: 190 },
+              webLayout.isPhone && { paddingHorizontal: 0 }
+            ]}
+          >
 
             {/* Forwards button. */}
             <TouchableOpacity style={VideoStyle.upAndDownDPad}
@@ -644,9 +766,9 @@ export default class VideoController extends React.Component {
                 <FontAwesome name="chevron-right" size={40} color="#fff" />
               </TouchableOpacity>
             </View>
-          </View>
+          </CameraButtonContainer>
         </View>
-      </View>
+      </ScreenContainer>
     );
   }
 }
