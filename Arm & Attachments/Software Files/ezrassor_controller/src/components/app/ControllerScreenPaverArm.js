@@ -411,12 +411,31 @@ export default class ControllerScreen extends React.Component {
                 )}
               </ImageBackground>
 
-              <View style={ControllerStyle.cameraPlaceholder}>
-                <FontAwesome name="video-camera" size={44} color="#9ba4a4" />
-                <Text style={ControllerStyle.cameraPlaceholderTitle}>CAMERA FEED</Text>
-                <Text style={ControllerStyle.cameraPlaceholderText}>
-                  Reserved for the arm camera
-                </Text>
+              <View style={{ flex: 1, marginHorizontal: 10, marginBottom: 10 }}>
+                <View
+                  style={[
+                    ControllerStyle.cameraPlaceholder,
+                    { flex: 3, marginHorizontal: 0 }
+                  ]}
+                >
+                  <FontAwesome name="video-camera" size={44} color="#9ba4a4" />
+                  <Text style={ControllerStyle.cameraPlaceholderTitle}>
+                    CAMERA FEED
+                  </Text>
+                  <Text style={ControllerStyle.cameraPlaceholderText}>
+                    Reserved for the arm camera
+                  </Text>
+                </View>
+
+                {this.renderJointControl( 
+                  'Base',
+                  Robot.PLATE,
+                  'CCW',
+                  'CW',
+                  'rotate-left',
+                  'rotate-right',
+                  ControllerStyle.mainButtonTextHorizontal
+                )}
               </View>
             </View>
           </View>
