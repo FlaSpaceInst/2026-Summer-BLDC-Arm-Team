@@ -236,18 +236,12 @@ def main(passed_args=None):
 
         @app.route("/", methods=["POST"])
         def handle_request():
-            """Handle HTTP requests and log any errors.
-
-            This function is the glue between Flask/HTTP and ROS business logic
-            in this package.
-            """
-
             try:
                 payload = request.get_json(silent=True)
                 if payload is None:
                     return {"status": 400, "error": "Invalid JSON body"}
 
-                arm_fields = {'shoulder_joint_action', 'forearm_joint_action'}
+                arm_fields = {'plate_joint_action', 'shoulder_joint_action', 'forearm_joint_action'}
                 if arm_fields.intersection(payload):
                     for key in arm_fields.intersection(payload):
                         if payload[key] not in ('POSITIVE', 'NEGATIVE', 'STOP'):

@@ -17,6 +17,7 @@ import serial
 ARM_BYTES = {
     'shoulder_joint_action': {'POSITIVE': 0x0F, 'NEGATIVE': 0x10, 'STOP': 0x11},
     'forearm_joint_action': {'POSITIVE': 0x12, 'NEGATIVE': 0x13, 'STOP': 0x14},
+    'plate_joint_action': {'POSITIVE': 0x0C, 'NEGATIVE': 0x0D, 'STOP': 0x0E}
 }
 
 
@@ -106,9 +107,16 @@ class RassorDriverSubscriber(Node):
                 action = payload[field]
                 if action not in mapping:
                     raise ValueError(f'{field} invalid action: {action!r}')
+
                 command = mapping[action]
-                # Send each explicit request including STOP, rather than suppressing repeats.
-                self.send_arm(command, field)
+                # The base is on the wheel arduino
+                if field == 'plate_joint_action':
+                    with self.wheel_lock:
+                        self.wheel_usb.write(bytes([command]))
+                        self.get_logger().info(f'PLATE TX {field}: 0x{command:02X}')
+                else:
+                    # Send each explicit request including STOP, rather than suppressing repeats.
+                    self.send_arm(command, field)
         except (ValueError, TypeError) as exc:
             self.get_logger().error(f'Invalid arm command: {exc}')
 
