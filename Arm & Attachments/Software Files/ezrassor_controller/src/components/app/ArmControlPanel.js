@@ -1,3 +1,4 @@
+import roverFetch from '../../api/rover-fetch';
 import React from 'react';
 import { Text, View, TextInput, TouchableOpacity } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
@@ -119,7 +120,7 @@ export default class ArmControlPanel extends React.Component {
       if (!url.startsWith('http://') && !url.startsWith('https://')) {
         url = 'http://' + url;
       }
-      const response = await fetch(url.replace(/\/$/, '') + '/health', { signal: controller.signal });
+      const response = await roverFetch(url.replace(/\/$/, '') + '/health', { signal: controller.signal });
       if (!response.ok) {
         throw new Error('HTTP ' + response.status);
       }

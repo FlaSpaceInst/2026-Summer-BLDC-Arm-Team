@@ -83,6 +83,7 @@ function createPanel(options = {}) {
     AsyncStorage,
     EZARM,
     fetch,
+    roverFetch: fetch,
     AbortController,
     setTimeout,
     clearTimeout,

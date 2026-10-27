@@ -8,8 +8,10 @@
     "ios": "expo start --ios",
     "eject": "expo eject",
     "web": "expo start --web",
-    "build:web": "expo export:web",
-    "test": "node --test test/*.test.cjs"
+    "build:web": "node ./node_modules/expo/bin/cli export:web",
+    "test": "node --test test/*.test.cjs",
+    "desktop:test": "node --test desktop/tests/*.test.cjs",
+    "desktop:build": "powershell -NoProfile -ExecutionPolicy Bypass -File ./desktop/build-windows.ps1"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "1.18.2",

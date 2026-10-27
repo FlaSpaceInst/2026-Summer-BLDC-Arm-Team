@@ -1,3 +1,4 @@
+import roverFetch from '../../api/rover-fetch';
 import { TouchableOpacity, StyleSheet, Text, View, Alert, TouchableHighlight, ScrollView, Platform, Dimensions } from 'react-native';
 import * as React from 'react';
 import Modal from './ControllerModal';
@@ -251,7 +252,7 @@ export default class VideoController extends React.Component {
     * Poll Controller Server Detection API to confirm a paver is still in view to pick
     */
   async confirmDetection(x, y, z) {
-    const response = await fetch('http://' + this.state.pollingRoute)
+    const response = await roverFetch('http://' + this.state.pollingRoute)
       .then((response) => response.json())
       .then((json) => console.log(json));
 
@@ -318,7 +319,7 @@ export default class VideoController extends React.Component {
   async pollForDetection() {
     console.log("Polling for detection at: " + this.state.pollingRoute);
 
-    let response = await fetch('http://' + this.state.pollingRoute);
+    let response = await roverFetch('http://' + this.state.pollingRoute);
     let data = await response.json();
 
     console.log(data);

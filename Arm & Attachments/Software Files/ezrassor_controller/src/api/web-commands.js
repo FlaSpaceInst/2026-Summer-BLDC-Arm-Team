@@ -1,3 +1,4 @@
+import roverFetch from './rover-fetch';
 export default class HTTP {
     static async doPost(host, message, extension = '/') {
         let address = host.trim();
@@ -9,7 +10,7 @@ export default class HTTP {
             normalizedExtension = '/' + extension;
         }
         const url = address.replace(/\/$/, '') + normalizedExtension;
-        const response = await fetch(url, {
+        const response = await roverFetch(url, {
             method: 'POST',
             headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
             body: message

@@ -1,0 +1,62 @@
+{
+  "name": "re-rassor-controller-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Windows desktop packaging for the original RE-RASSOR Expo controller",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test tests/*.test.cjs",
+    "package:win": "electron-builder --win --x64"
+  },
+  "devDependencies": {
+    "electron": "44.9.3",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "edu.ucf.rerassor.controller",
+    "productName": "RE-RASSOR Controller",
+    "copyright": "RE-RASSOR project contributors",
+    "asar": true,
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "static-server.cjs",
+      "rover-request.cjs",
+      "web-build/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "../release"
+    },
+    "win": {
+      "icon": "assets/rerassor.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "artifactName": "RE-RASSOR-Controller-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "RE-RASSOR-Controller-Portable-${version}.${ext}"
+    }
+  }
+}

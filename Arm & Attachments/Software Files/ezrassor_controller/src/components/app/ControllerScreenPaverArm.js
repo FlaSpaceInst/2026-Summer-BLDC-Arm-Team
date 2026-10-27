@@ -1,3 +1,4 @@
+import roverFetch from '../../api/rover-fetch';
 import React from 'react';
 import Modal from './ControllerModal';
 import EZRASSOR from '../../api/ezrassor-service-paver-arm' 
@@ -120,7 +121,7 @@ export default class ControllerScreen extends React.Component {
       if (!url.startsWith('http://') && !url.startsWith('https://')) {
         url = 'http://' + url;
       }
-      const response = await fetch(url.replace(/\/$/, '') + '/health');
+      const response = await roverFetch(url.replace(/\/$/, '') + '/health');
       if (!response.ok) {
         throw new Error('HTTP ' + response.status);
       }

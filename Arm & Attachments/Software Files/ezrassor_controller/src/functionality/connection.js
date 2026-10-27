@@ -1,3 +1,4 @@
+import roverFetch from '../api/rover-fetch';
 
 const DEFAULT_TIMEOUT_TIME = 4000;
 const ROVER_PORT = '5000';
@@ -45,7 +46,7 @@ export async function isIpReachable(ip, timeoutTime = DEFAULT_TIMEOUT_TIME, verb
   }, timeoutTime);
 
   try {
-    const response = await fetch(`http://${ip}`, {
+    const response = await roverFetch(`http://${ip}`, {
       method: 'GET',
       signal: controller.signal,
     });
