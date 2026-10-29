@@ -51,6 +51,7 @@ export default class EZRASSOR {
         const split = coordinates.split(',');
 
         const x = split[0] || '0';
+        let y = '0';
         if (split.length == 2 && split[1] !== ''){
             y = split[1];
         }
