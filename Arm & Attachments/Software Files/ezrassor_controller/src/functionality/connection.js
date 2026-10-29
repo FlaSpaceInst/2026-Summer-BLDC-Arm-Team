@@ -40,16 +40,47 @@ export async function isIpReachable(ip, timeoutTime = DEFAULT_TIMEOUT_TIME, verb
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutTime);
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, timeoutTime);
 
   try {
-    await fetch(`http://${ip}`, { signal: controller.signal });
+    const response = await fetch(`http://${ip}`, {
+      method: 'GET',
+      signal: controller.signal,
+    });
+
+<<<<<<< Updated upstream
+    // Any HTTP response proves that a server answered.
+    // A non-2xx status may still mean the host is reachable.
+    if (verbose) 
+    {
+      console.log(`Response from ${ip}: HTTP ${response.status}`);
+    }
+
     return true;
-  } catch (_) {
+  } 
+  catch (error) 
+  {
+    if (verbose) 
+    {
+      console.log(`Unable to reach ${ip}:`, error?.message ?? error);
+    }
+
     return false;
-  } finally {
-    clearTimeout(timeoutId);
+  } 
+  finally 
+  {
+    clearTimeout(timeout);
   }
+    Promise
+      .race([attemptConnection, timeout])
+      .then(() => { resolve(true); })
+      .catch((error) => { 
+          console.log('Failed to connect to rover:', ip, error);
+          resolve(false); 
+        })
+  });
 }
 
 /**

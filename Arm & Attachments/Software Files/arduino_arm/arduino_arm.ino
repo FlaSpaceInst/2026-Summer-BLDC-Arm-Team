@@ -29,15 +29,15 @@
 #define E0_ENABLE_PIN 24
 
 // extruder 2 (arm elbow)
-#define E1_STEP_PIN 36
-#define E1_DIR_PIN 34
-#define E1_ENABLE_PIN 30
+#define Y_STEP_PIN 60
+#define Y_DIR_PIN 61
+#define Y_ENABLE_PIN 56
 
 // arm shoulder: E0
 DRV8825 armShoulder(E0_STEP_PIN, E0_DIR_PIN, E0_ENABLE_PIN, STEPS_PER_REV);
 
 // arm elbow: E1
-DRV8825 armElbow(E1_STEP_PIN, E1_DIR_PIN, E1_ENABLE_PIN, STEPS_PER_REV);
+DRV8825 armElbow(Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, STEPS_PER_REV);
 
 // global checker for halted
 int halt = 0;

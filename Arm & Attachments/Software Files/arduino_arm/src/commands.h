@@ -16,9 +16,9 @@ enum COMMANDS {
   LOWER = 0X08, // seems unused, probably related to drums
 
   // 2026 Team's Additions
-  OPEN_EFFECTOR = 0x09, // start opening end effector
-  CLOSE_EFFECTOR = 0x0A, // start closing end effector
-  STOP_EFFECTOR = 0x0B, // forcibly stops the opening/closing of end effector
+  ARM_OPEN_EFFECTOR = 0x09, // start opening end effector
+  ARM_CLOSE_EFFECTOR = 0x0A, // start closing end effector
+  ARM_STOP_EFFECTOR = 0x0B, // forcibly stops the opening/closing of end effector
   ARM_ROTATE_CW = 0x0C, // rotates base clockwise
   ARM_ROTATE_CCW = 0x0D, // rotates base counterclockwise
   ARM_STOP_ROTATE = 0x0E, // stops base rotation
