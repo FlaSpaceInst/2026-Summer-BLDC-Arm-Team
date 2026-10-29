@@ -1,3 +1,4 @@
+
 # RE-RASSOR Arm Development
 
 ## Overview
@@ -6,7 +7,7 @@ The 2026 RE-RASSOR Arm Development Team is responsible for designing, prototypin
 
 The project has progressed beyond the preliminary design phase and is currently in the implementation, integration, and validation stage. The team has established the arm's primary mechanical architecture, developed and iterated multiple CAD prototypes, integrated inherited rover hardware and software resources, and continued development of the arm control interface and communication architecture.
 
-The current arm design uses a four-degree-of-freedom configuration consisting of a rotating base, shoulder joint, elbow joint, and actuated end effector. The design uses a hybrid actuation approach incorporating a stepper motor for the arm base and BLDC motors for the upper arm joints. The BLDC motor platform builds upon work completed by the 2025 UCF BLDC Motor Control Team and is being evaluated for the different loading conditions introduced by the robotic arm.
+The arm architecture is designed around four degrees of freedom: a rotating base, shoulder joint, elbow joint, and end effector. The primary arm joints currently demonstrate movement, but the end effector is not yet complete. Motor-selection and weight constraints remain unresolved for the end effector. The arm uses a hybrid actuation approach, and the BLDC motor platform builds upon work completed by the 2025 UCF BLDC Motor Control Team.
 
 Development is being performed iteratively through CAD modeling, additive manufacturing, assembly, subsystem evaluation, software development, and integration. Prototype revisions have been used to identify dimensional, structural, clearance, manufacturing, and assembly issues before progressing toward later versions.
 
@@ -86,103 +87,81 @@ The primary objectives of this project are:
 
 ## Repository Organization
 
-This repository contains inherited project resources as well as new development work produced during the 2026 project cycle.
+The repository is organized to distinguish inherited rover resources, reference material from the previous BLDC team, and original 2026 arm development. The main folders are intended to support both final project delivery and future-team handoff.
 
 ### Base Cart & Control
 
-Contains inherited rover resources originating primarily from previous RE-RASSOR teams, including:
+Contains inherited rover resources originating primarily from previous RE-RASSOR teams, including rover software, control architecture, networking resources, and base-platform documentation. These files provide the existing rover foundation that the arm software must remain compatible with.
 
-- Rover software
-- Control architecture
-- Existing rover documentation
-- Networking resources
-- Base platform reference materials
-
-Primary source:
-
-https://github.com/FlaSpaceInst/2023-RE-RASSOR-Extension/tree/cart_desktop/ezrassor_rover/ros-scripts
+Primary source: https://github.com/FlaSpaceInst/2023-RE-RASSOR-Extension/tree/cart_desktop/ezrassor_rover/ros-scripts
 
 ### BLDC CAD
 
-Contains inherited resources from the 2025 BLDC Motor Control Team, including:
+Contains reference material from the 2025 UCF BLDC Motor Control Team, including motor-control research, CAD resources, testing documentation, and related design files. This work is referenced and adapted where applicable; it is not claimed as original 2026 team work.
 
-- BLDC motor documentation
-- Motor control research
-- CAD resources
-- Testing documentation
-- Related design files
-
-Primary source:
-
-https://github.com/FlaSpaceInst/2025-Fall-UCF-BLDC-Motor-Control
+Primary source: https://github.com/FlaSpaceInst/2025-Fall-UCF-BLDC-Motor-Control
 
 ### Arm & Attachments
 
-Contains original development work produced by the 2026 RE-RASSOR Arm Development Team, including mechanical design, prototype development, manufacturing resources, and supporting documentation for the robotic arm.
+Contains the 2026 team's arm-specific mechanical and software development.
 
 #### CAD Files
 
-Contains CAD resources developed throughout the project lifecycle.
+- **Assembly Schemas/** — assembly and layout references used to understand component relationships and assembly order.
+- **STL & Dev Files/** — STL exports and development CAD files, including DWG/Fusion files where available, individual components, assembly models, and earlier design iterations. The `V1 Hand Designs/` and related subfolders preserve earlier end-effector concepts; these are retained for design history and should not automatically be treated as the current final design.
+- **G-code & Printing Files/** — manufacturing/slicer project files organized by material and component group:
+  - **PETG Final Product Files/** — print projects intended for the final or installed component set, including arm/base and end-effector components.
+  - **PLA Files/** — print projects used for prototyping and iteration, including arm/base and end-effector components.
 
-**End Effector Designs**
-- Gripper concepts
-- End effector assemblies
-- Attachment mechanisms
-- Supporting design iterations
+Use the most recent approved CAD/print files for fabrication. STL files are mesh exports and may not preserve the full editability of the original CAD source. Review assembly and print settings before manufacturing.
 
-**STL & Development Files**
-- Native CAD models
-- Assembly files
-- Prototype development resources
-- Editable design files
+#### Software Files
 
-**G-code & Printing Files**
-- Printable STL exports
-- Slicer projects
-- G-code generated for prototype fabrication
-- Manufacturing resources
+- **ezrassor_controller/** — React Native / Expo operator application. Includes the arm controller screen, arm command service and enumerations, styles, and the existing rover controller screens and supporting components.
+- **arm_command_bridge/** — Node.js command bridge that maps incoming arm commands to serial communication with the microcontroller.
+- **arduino_arm/** — Arduino firmware and supporting source for arm joint actuation, including the stepper-driver implementation.
+- **arduino_hand/** — Arduino firmware and supporting source for end-effector actuation and BLDC/FOC control.
+- **arduino_wheels/** — wheel-control firmware included alongside the arm integration resources.
+- **ezrassor_controller_server/** — inherited/related ROS 2 controller server package, including launch, source, and test resources used by the rover control architecture.
+- **Item Identify Alg/** — computer-vision and object-identification experiments. Treat these as supporting/experimental resources unless separately validated as part of the demonstrated baseline.
+- **endEffector.js** and **rassor_driver_total_subscriber.py** — additional end-effector and rover integration scripts.
+- **.vscode/** — development-environment configuration.
+
+The software folders contain multiple cooperating layers. The operator app, command bridge, microcontroller firmware, and existing rover/ROS 2 services do not all perform the same role. When troubleshooting, trace a command from the user interface through the network/bridge layer to the serial or microcontroller handler rather than assuming a UI change alone changes motor behavior.
 
 ### Documentation & Testing
 
-Contains documentation produced throughout the project lifecycle, including:
-
-- Design reports
-- Design requirements and trade studies
-- Testing procedures
-- Validation results
-- Meeting notes where applicable
-- Research summaries
-- Sponsor deliverables
-- Development and integration documentation
-- Records of design revisions and identified limitations
+Contains project documentation and evidence generated during development, including design reports, requirements and trade studies, assembly and manufacturing notes, test procedures, validation results, sponsor deliverables, design revisions, known limitations, and handoff material. Keep records of both successful and unsuccessful tests so future teams can understand the reasoning behind final design decisions.
 
 ---
 
 ## Current Development Status
 
-The project has progressed from preliminary design into active implementation and integration.
+**Project stage: final refinement and subsystem integration.** The arm’s primary mechanical architecture has been established, and the assembled arm currently demonstrates joint movement. However, the end effector remains incomplete due to motor-selection and weight-related complications. Resolving these constraints is necessary before the end effector can be finalized and the complete arm assembly can undergo integrated validation.
 
-The primary mechanical architecture has been established as a four-degree-of-freedom robotic arm consisting of a rotating base, shoulder joint, elbow joint, and actuated end effector. Multiple prototype components have been modeled and fabricated through iterative CAD and additive-manufacturing processes. Prototype evaluation has identified and informed revisions involving dimensional accuracy, mounting interfaces, clearance, alignment, structural geometry, and manufacturability.
+### What is working / established
 
-The arm's mounting system and base components have undergone multiple design iterations. The end effector has also undergone significant redesign following issues encountered during early prototype fabrication and assembly. These iterations are being retained as part of the project's engineering record to document both successful and unsuccessful design approaches.
+- The primary four-degree-of-freedom arm architecture has been established.
+- The assembled arm currently demonstrates movement through its existing control setup.
+- Arm-specific CAD, manufacturing files, firmware, command-bridge resources, and operator-interface components have been developed.
+- Previous design iterations and manufacturing resources are retained to support refinement and future development.
 
-Software development is progressing alongside the mechanical implementation. The team is extending the existing rover HTTP, ROS2, serial communication, and microcontroller architecture to support arm-specific commands while preserving existing rover functionality. Development of the arm user interface is also underway, including joint-level controls, arm visualization, camera integration concepts, and safety-oriented interaction mechanisms.
+### Remaining development priorities
 
-Current development efforts are focused on:
+- **End-effector motor selection and integration:** Resolve motor-related weight constraints and determine a suitable configuration for the end effector. Complete mechanical and electrical integration once the motor configuration is finalized.
+- **Mechanical refinement:** Address remaining fit, clearance, mounting, alignment, and manufacturing issues identified during assembly and testing.
+- **Control interface refinement:** Coordinate the operator interface with the backend and firmware, including implementation of adjustable speed controls and their associated command mappings.
+- **Command-path validation:** Verify communication from the operator application through the command bridge to the appropriate microcontroller and motor-control subsystem.
+- **Integrated testing:** Test the completed arm and end effector together after the remaining hardware and software work is finished.
+- **Documentation and handoff:** Record assembly instructions, verified functionality, test results, known limitations, and setup requirements for future teams.
 
-- Refining and fabricating mechanical prototype components
-- Integrating the arm mounting system with the rover
-- Evaluating the inherited BLDC motor platform under arm-specific loading conditions
-- Completing arm communication and control pathways
-- Developing and refining the robotic arm user interface
-- Establishing reliable subsystem interfaces
-- Performing mechanical, software, and integrated testing
-- Documenting prototype failures, design revisions, and testing results
-- Preparing the system for final validation
+### Current limitations
 
-Some planned capabilities, including computer-vision-assisted target identification, ArUco-based target tracking, autonomous or semi-autonomous paver retrieval, interchangeable end effectors, and additional arm functionality remain future development priorities rather than completed baseline capabilities.
+Although the arm’s primary joints demonstrate movement, the project has not yet reached full end-to-end mechanical integration because the end effector is unfinished. Successful movement of the arm joints does not establish that the gripper is functional or that the complete system has passed integrated testing.
 
-The remaining development effort will focus on subsystem integration, iterative testing, corrective design changes, and final system validation. Results from this work will be documented for continued development by future RE-RASSOR teams.
+Computer-vision-assisted identification, ArUco tracking, autonomous or semi-autonomous paver retrieval, and other planned capabilities should remain classified as experimental or future work unless separately demonstrated.
+
+The remaining development effort is focused on resolving the end-effector motor and weight constraints, completing integration, making targeted refinements, and validating the assembled system. Update this section as final tests confirm additional capabilities or reveal remaining issues.
 
 ---
 
