@@ -1,122 +1,100 @@
 import roverFetch from '../../api/rover-fetch';
 import React from 'react';
-import { Text, View, TextInput, TouchableOpacity } from 'react-native';
+import { Text, View, TouchableOpacity } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import EZARM from '../../api/ezrassor-service-paver-arm';
 import { Robot, Operation } from '../../enumerations/robot-commands-paver-arm';
-import { getDefaultArmBridgeHost } from '../../functionality/control-modes';
+import { getRosControlHost } from '../../functionality/control-modes';
+import { nextTapSpeed } from '../../functionality/tap-speed';
+import SpeedDots from './SpeedDots';
 
 /**
  * The existing arm commands in a compact panel beside the rover wheel controls.
- * Commands are event-driven: press sends movement, release sends STOP.
- * This panel does not schedule heartbeats or change the rover drivetrain API.
+ * Each tap starts movement or increases speed to Level 3 the red STOP
+ * button or a mode change stops the current joint.
  */
 export default class ArmControlPanel extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      bridgeIp: getDefaultArmBridgeHost(props.roverIp),
-      bridgeReady: false,
+      rosHost: getRosControlHost(props.roverIp),
+      rosReady: false,
       baseAvailable: false,
-      statusMessage: 'CONNECTING TO ARM BRIDGE...',
-      showSettings: false,
-      activeControl: ''
+      statusMessage: 'CONNECTING TO ROS 2...',
+      activeControl: '',
+      armSpeed: 0
     };
-    this.armService = new EZARM(this.state.bridgeIp);
+    this.armService = new EZARM(this.state.rosHost);
     this.activePart = null;
     this.activeOperation = null;
+    this.activeSpeedLevel = 0;
     this.componentMounted = false;
-    this.savedBridgeIp = false;
-    this.bridgeCheckId = 0;
-    this.addressEdited = false;
+    this.rosCheckId = 0;
   }
 
-  async componentDidMount() {
+  componentDidMount() {
     this.componentMounted = true;
-    let bridgeIp = this.state.bridgeIp;
-
-    // A controller connected directly to port 3000 is already using the arm
-    // mock/bridge. Prefer that selected address over a previously saved rover IP.
-    let directlyConnectedToBridge = false;
-    if (this.props.roverIp) {
-      const selectedHost = this.props.roverIp.replace(/^https?:\/\//, '').split('/')[0];
-      directlyConnectedToBridge = selectedHost.endsWith(':3000');
-    }
-
-    try {
-      const savedIp = await AsyncStorage.getItem('armBridgeIp');
-      if (!this.componentMounted) {
-        return;
-      }
-      if (savedIp && !this.addressEdited && !directlyConnectedToBridge) {
-        this.savedBridgeIp = true;
-        bridgeIp = savedIp;
-      }
-    } catch (error) {
-      // If storage is unavailable, check the bridge derived from the rover IP.
-    }
-
-    if (!this.componentMounted) {
-      return;
-    }
-    if (this.addressEdited || !this.savedBridgeIp) {
-      bridgeIp = this.state.bridgeIp;
-    }
-
-    this.armService.host = bridgeIp;
-    this.setState({ bridgeIp }, () => {
-      // One health check when Arm Mode opens. There is no heartbeat or polling.
-      this.checkBridge(bridgeIp);
-    });
+    this.checkRos();
   }
 
   componentDidUpdate(previousProps) {
-    if (!this.savedBridgeIp && previousProps.roverIp !== this.props.roverIp) {
-      const previousDefault = getDefaultArmBridgeHost(previousProps.roverIp);
-      if (this.state.bridgeIp === previousDefault) {
-        const nextDefault = getDefaultArmBridgeHost(this.props.roverIp);
-        this.bridgeCheckId += 1;
-        this.armService.host = nextDefault;
-        this.setState({ bridgeIp: nextDefault, bridgeReady: false, baseAvailable: false }, () => {
-          this.checkBridge(nextDefault);
-        });
-      }
+    if (previousProps.roverIp !== this.props.roverIp ||
+        previousProps.offlineMode !== this.props.offlineMode) {
+      this.stopMotion();
+      this.rosCheckId += 1;
+      const rosHost = getRosControlHost(this.props.roverIp);
+      this.armService.host = rosHost;
+      this.setState({
+        rosHost,
+        rosReady: false,
+        baseAvailable: false,
+        statusMessage: 'CHECKING ROS 2...'
+      }, () => this.checkRos());
     }
   }
 
   componentWillUnmount() {
     this.componentMounted = false;
-    this.bridgeCheckId += 1;
+    this.rosCheckId += 1;
     this.stopMotion();
   }
 
-  async checkBridge(requestedIp) {
-    // Ignore late replies from older checks or from an address being edited.
-    const checkId = ++this.bridgeCheckId;
+  async checkRos() {
+    // Do not disable an active movement button without first issuing STOP.
+    if (this.activePart) {
+      this.stopMotion();
+    }
+    const checkId = ++this.rosCheckId;
     if (this.props.offlineMode) {
       if (this.componentMounted) {
-        this.setState({ bridgeReady: false, baseAvailable: false, statusMessage: 'OFFLINE PREVIEW: commands disabled' });
+        this.setState({
+          rosReady: false,
+          baseAvailable: false,
+          statusMessage: 'OFFLINE PREVIEW: commands disabled'
+        });
       }
       return;
     }
 
-    let bridgeIp = this.state.bridgeIp;
-    if (requestedIp !== undefined) {
-      bridgeIp = requestedIp;
-    }
-    bridgeIp = bridgeIp.trim();
-    if (!bridgeIp) {
-      this.setState({ bridgeReady: false, baseAvailable: false, statusMessage: 'ENTER BRIDGE IP:PORT' });
+    const rosHost = getRosControlHost(this.props.roverIp);
+    if (!rosHost) {
+      if (this.componentMounted) {
+        this.setState({
+          rosReady: false,
+          baseAvailable: false,
+          statusMessage: 'CONNECT TO THE ROVER FIRST'
+        });
+      }
       return;
     }
 
-    this.setState({ bridgeReady: false, baseAvailable: false, statusMessage: 'CHECKING BRIDGE...' });
+    // Arm and hand commands use only the rover ROS 2 address.
+    this.setState({ rosReady: false, baseAvailable: false, rosHost, statusMessage: 'CHECKING ROS 2...' });
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3000);
 
     try {
-      let url = bridgeIp;
+      let url = rosHost;
       if (!url.startsWith('http://') && !url.startsWith('https://')) {
         url = 'http://' + url;
       }
@@ -125,103 +103,122 @@ export default class ArmControlPanel extends React.Component {
         throw new Error('HTTP ' + response.status);
       }
       const status = await response.json();
-      if (!status.armOpen || !status.handOpen) {
-        throw new Error('Arm or hand Arduino disconnected');
+      if (status.serialProtocol !== 'binary') {
+        throw new Error('Expected ROS 2 binary serial driver status');
       }
-      if (!this.componentMounted || checkId !== this.bridgeCheckId) {
+      if (status.armOpen !== true || status.handOpen !== true || status.ready !== true) {
+        throw new Error('Arm or hand Arduino not ready in ROS 2');
+      }
+      if (!this.componentMounted || checkId !== this.rosCheckId) {
         return;
       }
 
-      this.armService.host = bridgeIp;
-      this.savedBridgeIp = true;
+      this.armService.host = rosHost;
       this.setState({
-        bridgeReady: true,
+        rosReady: true,
         baseAvailable: status.wheelsOpen === true && status.baseEnabled === true,
-        statusMessage: 'ARM + HAND CONNECTED',
-        showSettings: false
+        statusMessage: 'ROS 2: ARM + HAND CONNECTED'
       });
-      // Storage failures should not disable a currently connected bridge.
-      try {
-        await AsyncStorage.setItem('armBridgeIp', bridgeIp);
-      } catch (error) {
-        // The bridge remains usable for the current session.
-      }
     } catch (error) {
-      if (this.componentMounted && checkId === this.bridgeCheckId) {
-        this.setState({ bridgeReady: false, baseAvailable: false, statusMessage: 'BRIDGE UNAVAILABLE: ' + error.message });
+      if (this.componentMounted && checkId === this.rosCheckId) {
+        this.setState({
+          rosReady: false,
+          baseAvailable: false,
+          statusMessage: 'ROS UNAVAILABLE: ' + error.message
+        });
       }
     } finally {
       clearTimeout(timeout);
     }
   }
 
-  async sendCommand(part, operation) {
+  async sendCommand(part, operation, speed = 1) {
     if (this.props.offlineMode) {
       return;
     }
-    if (!this.state.bridgeReady && operation !== Operation.STOP) {
+    if (!this.state.rosReady && operation !== Operation.STOP) {
       return;
     }
     try {
-      await this.armService.executeRobotCommand(part, operation);
+      await this.armService.executeRobotCommand(part, operation, speed);
     } catch (error) {
+      this.activePart = null;
+      this.activeOperation = null;
+      this.activeSpeedLevel = 0;
       this.armService.allStop().catch(() => {});
       if (this.componentMounted) {
-        this.setState({ bridgeReady: false, activeControl: '', statusMessage: 'COMMAND FAILED: ' + error.message });
+        this.setState({ rosReady: false, activeControl: '', armSpeed: 0, statusMessage: 'ROS COMMAND FAILED: ' + error.message });
       }
     }
   }
 
   pressMotion(part, operation, label) {
-    if (this.props.offlineMode || !this.state.bridgeReady) {
+    if (this.props.offlineMode || !this.state.rosReady) {
       return;
     }
     if (part === Robot.PLATE && !this.state.baseAvailable) {
       return;
     }
-    if (this.activePart) {
-      if (this.activePart === part && this.activeOperation === operation) {
+
+    const sameDirection = this.activePart === part && this.activeOperation === operation;
+    let nextLevel = 1;
+    if (sameDirection) {
+      nextLevel = nextTapSpeed(this.activeOperation, operation, this.activeSpeedLevel);
+      if (nextLevel === this.activeSpeedLevel && part !== Robot.ENDEFFECTOR) {
         return;
       }
+    } else if (this.activePart) {
       this.sendCommand(this.activePart, Operation.STOP);
     }
+
     this.activePart = part;
     this.activeOperation = operation;
-    this.setState({ activeControl: label, statusMessage: 'MOVING: ' + label });
-    this.sendCommand(part, operation);
-  }
+    this.activeSpeedLevel = nextLevel;
+    this.setState({
+      armSpeed: nextLevel,
+      activeControl: label,
+      statusMessage: 'ARM: ' + label + ' / LEVEL ' + nextLevel
+    });
 
-  releaseMotion(part) {
-    if (part !== this.activePart) {
-      return;
+    if (sameDirection && part !== Robot.ENDEFFECTOR) {
+      // Updating speed without repeating direction preserves stepper motion.
+      this.armService.setSpeed(part, nextLevel).catch((error) => {
+        this.emergencyStop();
+        if (this.componentMounted) {
+          this.setState({ rosReady: false, statusMessage: 'ROS SPEED COMMAND FAILED: ' + error.message });
+        }
+      });
+    } else {
+      // The gripper firmware executes a finite-duration pulse. Every tap must send movement again to start/extend a new pulse at that speed.
+      this.sendCommand(part, operation, nextLevel);
     }
-    this.stopMotion();
   }
 
   stopMotion() {
-    if (!this.activePart) {
-      return;
-    }
     const part = this.activePart;
     this.activePart = null;
     this.activeOperation = null;
+    this.activeSpeedLevel = 0;
     if (this.componentMounted) {
-      this.setState({ activeControl: '', statusMessage: 'STOP REQUESTED' });
+      this.setState({ activeControl: '', armSpeed: 0, statusMessage: 'STOP REQUESTED' });
     }
-    this.sendCommand(part, Operation.STOP);
+    if (part) {
+      this.sendCommand(part, Operation.STOP);
+    }
   }
 
   emergencyStop() {
     this.activePart = null;
     this.activeOperation = null;
+    this.activeSpeedLevel = 0;
     if (this.componentMounted) {
-      this.setState({ activeControl: '', statusMessage: 'ARM STOP REQUESTED' });
+      this.setState({ activeControl: '', armSpeed: 0, statusMessage: 'ARM STOP REQUESTED' });
     }
     this.sendCommand(Robot.ALL, Operation.STOP);
   }
 
   renderJoint(label, part, positiveLabel, negativeLabel, positiveIcon, negativeIcon) {
-    const disabled = this.props.offlineMode || !this.state.bridgeReady || (part === Robot.PLATE && !this.state.baseAvailable);
+    const disabled = this.props.offlineMode || !this.state.rosReady || (part === Robot.PLATE && !this.state.baseAvailable);
     return (
       <View style={{ marginBottom: 8 }} key={label}>
         <Text style={{ color: '#fff', textAlign: 'center', fontSize: 17, fontFamily: 'NASA', marginBottom: 4 }}>{label}</Text>
@@ -243,17 +240,35 @@ export default class ArmControlPanel extends React.Component {
     if (disabled) {
       buttonOpacity = 0.5;
     }
+
+    // Mirror the original D-pad lights within each joint's direction buttons.
+    // Only the active direction illuminates; positive is green, negative red.
+    let indicatorLevel = 0;
+    let indicatorSide = 'right';
+    if (operation === Operation.NEGATIVE) {
+      indicatorSide = 'left';
+    }
+    if (this.activePart === part && this.activeOperation === operation) {
+      indicatorLevel = this.state.armSpeed;
+      if (operation === Operation.NEGATIVE) {
+        indicatorLevel = -indicatorLevel;
+      }
+    }
     return (
       <TouchableOpacity
         accessibilityLabel={label}
         accessibilityRole="button"
         disabled={disabled}
-        onPressIn={() => this.pressMotion(part, operation, label)}
-        onPressOut={() => this.releaseMotion(part)}
+        onPress={() => this.pressMotion(part, operation, label)}
         style={{ flex: 1, minHeight: 54, borderRadius: 9, backgroundColor, opacity: buttonOpacity, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 12 }}
       >
         <Text style={{ fontFamily: 'NASA', color: '#fff', fontSize: 15 }}>{text}</Text>
         <FontAwesome name={icon} size={24} color="#fff" />
+        <SpeedDots
+          level={indicatorLevel}
+          side={indicatorSide}
+          label={label + ' speed'}
+        />
       </TouchableOpacity>
     );
   }
@@ -267,31 +282,16 @@ export default class ArmControlPanel extends React.Component {
       <View style={{ width: '100%' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, gap: 8 }}>
           <Text style={{ color: '#fff', fontFamily: 'NASA', fontSize: 18 }}>PAVER ARM</Text>
-          <TouchableOpacity onPress={() => { this.stopMotion(); this.setState({ showSettings: !this.state.showSettings }); }} accessibilityLabel="Configure arm bridge" style={{ padding: 8 }}>
-            <FontAwesome name="wifi" size={22} color="#fff" />
-          </TouchableOpacity>
           <TouchableOpacity onPress={() => this.emergencyStop()} accessibilityLabel="Stop arm" style={{ padding: 8 }}>
             <FontAwesome name="stop-circle-o" size={25} color="#ffb3b3" />
           </TouchableOpacity>
         </View>
-        {this.state.showSettings && (
-          <View style={{ backgroundColor: '#3a3d3d', padding: 10, borderRadius: 8, marginBottom: 8 }}>
-            <Text style={{ color: '#fff', fontFamily: 'NASA', marginBottom: 5 }}>ARM BRIDGE IP:PORT</Text>
-            <TextInput
-              accessibilityLabel="Arm bridge address"
-              style={{ backgroundColor: '#BFBFBF', color: '#171919', borderRadius: 5, padding: 9, fontSize: 15 }}
-              value={this.state.bridgeIp}
-              autoCapitalize="none"
-              onChangeText={(bridgeIp) => { this.stopMotion(); this.bridgeCheckId += 1; this.addressEdited = true; this.setState({ bridgeIp, bridgeReady: false, baseAvailable: false, statusMessage: 'CHECK BRIDGE TO CONNECT' }); }}
-            />
-          </View>
-        )}
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 10 }}>
           <Text style={{ color: '#dbe1e1', fontSize: 11, flex: 1 }} numberOfLines={2}>
             {statusText}
           </Text>
-          <TouchableOpacity onPress={() => this.checkBridge()} accessibilityLabel="Check arm bridge" style={{ paddingHorizontal: 10, paddingVertical: 7, borderRadius: 5, backgroundColor: '#5D6061' }}>
-            <Text style={{ fontFamily: 'NASA', color: '#fff', fontSize: 12 }}>CHECK BRIDGE</Text>
+          <TouchableOpacity onPress={() => this.checkRos()} accessibilityLabel="Check ROS connection" style={{ paddingHorizontal: 10, paddingVertical: 7, borderRadius: 5, backgroundColor: '#5D6061' }}>
+            <Text style={{ fontFamily: 'NASA', color: '#fff', fontSize: 12 }}>CHECK ROS</Text>
           </TouchableOpacity>
         </View>
         {this.renderJoint('Base', Robot.PLATE, 'CW', 'CCW', 'rotate-right', 'rotate-left')}

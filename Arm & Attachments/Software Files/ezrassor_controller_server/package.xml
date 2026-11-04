@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd"
+            schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>ezrassor_controller_server</name>
+  <version>2.0.0</version>
+  <description>
+    Handle incoming network requests for the EZRASSOR.
+  </description>
+  <url type="website">
+    https://github.com/FlaSpaceInst/ezrassor_controller_server
+  </url>
+  <maintainer email="ez.rassor@gmail.com">EZRASSOR Team</maintainer>
+  <author email="ez.rassor@gmail.com">EZRASSOR Team</author>
+  <license>MIT</license>
+
+  <depend>geometry_msgs</depend>
+  <depend>launch</depend>
+  <depend>launch_ros</depend>
+  <depend>rclpy</depend>
+  <depend>std_msgs</depend>
+  <depend>python3-flask</depend>
+  <depend>python3-opencv</depend>
+
+  <test_depend version_gte="6.0.0">python3-pytest</test_depend>
+  <test_depend>python3-requests</test_depend>
+
+  <exec_depend>launch_testing</exec_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

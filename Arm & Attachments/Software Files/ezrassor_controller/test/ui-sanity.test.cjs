@@ -23,7 +23,7 @@ test('original NASA/paver imagery remain and no heartbeat is present', () => {
   const source = read('src/components/app/ControllerScreenPaverArm.js');
   assert.match(source, /PaverArmShoulder\.png/);
   assert.match(source, /NASA/);
-  assert.match(source, /CHECK BRIDGE/);
+  assert.match(read('src/components/app/ArmControlPanel.js'), /CHECK ROS/);
   assert.match(source, /Gripper/);
   assert.doesNotMatch(source, /heartbeat|setInterval/i);
 });

@@ -15,11 +15,18 @@ export function getNextControlMode(requestedMode, currentMode, previousMode) {
   return { controlMode: 'drum', previousControlMode: 'drum' };
 }
 
-/** Derive the arm bridge address without changing the existing rover service port. */
-export function getDefaultArmBridgeHost(roverIp) {
-  if (!roverIp) {
-    return '127.0.0.1:3000';
+/** Arm commands now use the same ROS 2 HTTP host as rover driving. */
+export function getRosControlHost(roverIp) {
+  if (typeof roverIp !== 'string') {
+    return '';
   }
-  const hostname = roverIp.replace(/^https?:\/\//, '').split('/')[0].split(':')[0];
-  return hostname + ':3000';
+
+  let address = roverIp.trim().replace(/^https?:\/\//, '').split('/')[0];
+  if (!address) {
+    return '';
+  }
+  if (!address.includes(':')) {
+    address += ':5000';
+  }
+  return address;
 }

@@ -7,7 +7,7 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test tests/*.test.cjs",
-    "package:win": "electron-builder --win --x64"
+    "package:win": "node ./node_modules/electron-builder/cli.js --win --x64"
   },
   "devDependencies": {
     "electron": "44.9.3",

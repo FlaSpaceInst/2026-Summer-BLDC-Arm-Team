@@ -8,6 +8,7 @@ export default class EZRASSOR {
     constructor(host, route = '') {
         this.host = host;
         this.route = route;
+        this._commandQueue = Promise.resolve();
         this.setCoordinate('0,0');
         this._twistMsg = {
             autonomous_toggles: 0,
@@ -77,21 +78,24 @@ export default class EZRASSOR {
         this._twistMsg = instruction;
     }
 
-    updateWheelTwistMsg(operation) {
+    updateWheelTwistMsg(operation, speed = 1) {
+        if (![1, 2, 3].includes(speed)) {
+            throw new Error('Wheel speed must be 1, 2, or 3');
+        }
         let instruction = null;
 
         switch (operation) {
             case WheelOperation.FORWARD:
-                instruction = { wheel_action: { linear_x: WheelOperation.LINEAR_X_FORWARD, angular_z: 0 } };
+                instruction = { wheel_action: { linear_x: Number(WheelOperation.LINEAR_X_FORWARD) * speed, angular_z: 0 } };
                 break;
             case WheelOperation.BACKWARD:
-                instruction = { wheel_action: { linear_x: WheelOperation.LINEAR_X_BACKWARD, angular_z: 0 } };
+                instruction = { wheel_action: { linear_x: Number(WheelOperation.LINEAR_X_BACKWARD) * speed, angular_z: 0 } };
                 break;
             case WheelOperation.LEFT:
-                instruction = { wheel_action: { linear_x: 0, angular_z: WheelOperation.ANGULAR_Z_LEFT } };
+                instruction = { wheel_action: { linear_x: 0, angular_z: Number(WheelOperation.ANGULAR_Z_LEFT) * speed } };
                 break;
             case WheelOperation.RIGHT:
-                instruction = { wheel_action: { linear_x: 0, angular_z: WheelOperation.ANGULAR_Z_RIGHT } };
+                instruction = { wheel_action: { linear_x: 0, angular_z: Number(WheelOperation.ANGULAR_Z_RIGHT) * speed } };
                 break;
             case WheelOperation.STOP:
                 instruction = { wheel_action: { linear_x: 0, angular_z: 0 } };
@@ -118,23 +122,20 @@ export default class EZRASSOR {
         this._twistMsg = { autonomous_toggles: instruction };
     }
 
-    // Stop all robot operations and send the stop command.
-    allStop = () => {
-        this._twistMsg = {
-            autonomous_toggles: 0,
-            target_coordinate: this.coordinate,
-            wheel_instruction: 'none',
-            front_arm_instruction: 0,
-            back_arm_instruction: 0,
-            front_drum_instruction: 0,
-            back_drum_instruction: 0
-        };
+    // The ROS server owns the dedicated /stop endpoint. The legacy all-stop
+    sendCommand(message, extension = DEFAULT_EXT) {
+        const commandHost = this.apiPath;
+        const operation = this._commandQueue.then(() => HTTP.doPost(commandHost, message, extension));
+        this._commandQueue = operation.catch(() => {});
+        return operation;
+    }
 
-        return HTTP.doPost(this.apiPath, this.twistMsg, DEFAULT_EXT);
+    allStop = () => {
+        return this.sendCommand('{}', '/stop');
     };
 
     // Execute the corresponding robot command from the enumeration items passed in
-    executeRobotCommand(part, operation) {
+    executeRobotCommand(part, operation, speed = 1) {
         if (part === Robot.ALL && operation === Operation.STOP) {
             return this.allStop();
         }
@@ -153,7 +154,7 @@ export default class EZRASSOR {
                 this.updateTwistMsg({ back_drum_action: operation });
                 break;
             case Robot.WHEELS:
-                if (!this.updateWheelTwistMsg(operation)) {
+                if (!this.updateWheelTwistMsg(operation, speed)) {
                     return;
                 }
                 break;
@@ -165,6 +166,6 @@ export default class EZRASSOR {
                 return;
         }
 
-        return HTTP.doPost(this.apiPath, this.twistMsg, DEFAULT_EXT);
+        return this.sendCommand(this.twistMsg);
     }
 }

@@ -173,6 +173,30 @@ int slowSpeed = ACCEL_INCREMENT;
 // indicates whether we go slow, medium, fast, or not moving with +/- for direction
 int leftSpeed = 0;
 int rightSpeed = 0;
+int driveSpeedLevel = 1;
+long baseSpeedRpm = BASE_SPD;
+bool baseMoving = false;
+
+// Change wheel speed without altering motor direction or starting stopped wheels.
+void applyWheelSpeedLevel(int level) {
+  // Changing the preset while moving must restart the acceleration ramp.
+  if (driveSpeedLevel != level && (leftSpeed != 0 || rightSpeed != 0)) {
+    on = 1;
+    stop = 0;
+    slowSpeed = ACCEL_INCREMENT;
+  }
+  driveSpeedLevel = level;
+  if (leftSpeed > 0) {
+    leftSpeed = driveSpeedLevel;
+  } else if (leftSpeed < 0) {
+    leftSpeed = -driveSpeedLevel;
+  }
+  if (rightSpeed > 0) {
+    rightSpeed = driveSpeedLevel;
+  } else if (rightSpeed < 0) {
+    rightSpeed = -driveSpeedLevel;
+  }
+}
 
 
 
@@ -284,136 +308,100 @@ void update_motors() {
 void read_serial() {
   if (Serial.available()) {
     
-    // last_command = Serial.read();
+    // one binary command byte per serial message.
+    last_command = Serial.read();
+
+    // Optional Arduino Serial Monitor debugging only:
+
+    // Comment out the binary read above and uncomment the block below.
+
+    // String command = Serial.readStringUntil('\n');
+    // if (command == "FWD")
+    //   last_command = FWD;
+    // if (command == "REV")
+    //   last_command = REV;
+    // if (command == "RIGHT")
+    //   last_command = RIGHT;
+    // if (command == "LEFT")
+    //   last_command = LEFT;
+    // if (command == "STOP")
+    //   last_command = STOP;
     
-    // The below comments are for debugging, comment the line above and decomment the below to debug [ctrl + /]
-
-    String command = Serial.readStringUntil('\n');
-    if (command == "FWD")
-      last_command = FWD;
-    if (command == "REV")
-      last_command = REV;
-    if (command == "RIGHT")
-      last_command = RIGHT;
-    if (command == "LEFT")
-      last_command = LEFT;
-    if (command == "STOP") {
-      last_command = STOP;
-    }
-    else if (command == "ARM_CW") {
-      last_command = ARM_ROTATE_CW;
-    }
-    else if (command == "ARM_CCW") {
-      last_command = ARM_ROTATE_CCW;
-    }
-    else if (command == "ARM_STOP") {
-      last_command = ARM_STOP_ROTATE;
-    }
-    else if (command != "FWD" && command != "REV" && command != "LEFT" && command != "RIGHT") {
-      // Unknown input must never replay the previous wheel command.
-      return;
-    }
-
     switch (last_command) {
       case STOP:
         stop = 1;
         on = 0;
         break;
 
+      case WHEEL_SPEED_SLOW:
+        applyWheelSpeedLevel(1);
+        break;
+      case WHEEL_SPEED_MEDIUM:
+        applyWheelSpeedLevel(2);
+        break;
+      case WHEEL_SPEED_FAST:
+        applyWheelSpeedLevel(3);
+        break;
+      case BASE_SPEED_SLOW:
+        baseSpeedRpm = max(1L, (long)(BASE_SPD / 3));
+        if (baseMoving) {
+          armBase.set_speed(baseSpeedRpm);
+        }
+        break;
+      case BASE_SPEED_MEDIUM:
+        baseSpeedRpm = max(1L, (long)(BASE_SPD * 2 / 3));
+        if (baseMoving) {
+          armBase.set_speed(baseSpeedRpm);
+        }
+        break;
+      case BASE_SPEED_FAST:
+        baseSpeedRpm = BASE_SPD;
+        if (baseMoving) {
+          armBase.set_speed(baseSpeedRpm);
+        }
+        break;
+
       case FWD:
-        if (leftSpeed >= 3 && rightSpeed >= 3)  // if we are already at max going forward do nothing
-          break;
-        if (leftSpeed < 3)
-          leftSpeed++;
-        if (rightSpeed < 3)
-          rightSpeed++;
+        leftSpeed = driveSpeedLevel;
+        rightSpeed = driveSpeedLevel;
         on = 1;
         stop = 0;
-
-        if (leftSpeed < 0)
-          ls = false;
-        else
-          ls = true;
-        if (rightSpeed < 0)
-          rs = true;
-        else
-          rs = false;
+        ls = true;
+        rs = false;
         slowSpeed = ACCEL_INCREMENT;
         Speedup(ls, rs);
-
         break;
       case REV:
-        if (leftSpeed <= -3 && rightSpeed <= -3)  // if we are already at max going reverse do nothing
-          break;
-        if (leftSpeed > -3)
-          leftSpeed--;
-        if (rightSpeed > -3)
-          rightSpeed--;
+        leftSpeed = -driveSpeedLevel;
+        rightSpeed = -driveSpeedLevel;
         on = 1;
         stop = 0;
-
-        if (leftSpeed < 0)
-          ls = false;
-        else
-          ls = true;
-        if (rightSpeed < 0)
-          rs = true;
-        else
-          rs = false;
+        ls = false;
+        rs = true;
         slowSpeed = ACCEL_INCREMENT;
         Speedup(ls, rs);
-
-
         break;
-
       case RIGHT:
-        if (leftSpeed >= 3 && rightSpeed <= -3)  // if we are already at max going right do nothing
-          break;
-        if (leftSpeed < 3)
-          leftSpeed++;
-        if (rightSpeed > -3)
-          rightSpeed--;
+        leftSpeed = driveSpeedLevel;
+        rightSpeed = -driveSpeedLevel;
         on = 1;
         stop = 0;
-
-        if (leftSpeed < 0)
-          ls = false;
-        else
-          ls = true;
-        if (rightSpeed < 0)
-          rs = true;
-        else
-          rs = false;
+        ls = true;
+        rs = true;
         slowSpeed = ACCEL_INCREMENT;
         Speedup(ls, rs);
-
         break;
-
       case LEFT:
-        if (rightSpeed >= 3 && leftSpeed <= -3)  // if we are already at max going left do nothing
-          break;
-        if (rightSpeed < 3)
-          rightSpeed++;
-        if (leftSpeed > -3)
-          leftSpeed--;
+        leftSpeed = -driveSpeedLevel;
+        rightSpeed = driveSpeedLevel;
         on = 1;
         stop = 0;
-
-        // passes in as left side , right side
-        if (leftSpeed < 0)
-          ls = false;
-        else
-          ls = true;
-        if (rightSpeed < 0)
-          rs = true;
-        else
-          rs = false;
+        ls = false;
+        rs = false;
         slowSpeed = ACCEL_INCREMENT;
         Speedup(ls, rs);
-
-
         break;
-      
+
       // 2026 Team's Addition
       case OPEN_EFFECTOR:
         /*freeDriver.set_direction(DIR_OPEN);
@@ -430,16 +418,19 @@ void read_serial() {
         break;
 
       case ARM_ROTATE_CW:
+        baseMoving = true;
         armBase.set_direction(DIR_CW);
-        armBase.set_speed(BASE_SPD);
+        armBase.set_speed(baseSpeedRpm);
         break;
       
       case ARM_ROTATE_CCW:
+        baseMoving = true;
         armBase.set_direction(!DIR_CW);
-        armBase.set_speed(BASE_SPD);
+        armBase.set_speed(baseSpeedRpm);
         break;
 
       case ARM_STOP_ROTATE:
+        baseMoving = false;
         armBase.set_speed(0);
         break;
 
@@ -683,6 +674,8 @@ void Speedup(bool left, bool right) {
 
 // The stop function to be called to slowly stop the motors
 void Stop() {
+  // Retain existing STOP behavior for both drivetrain and base.
+  baseMoving = false;
   armBase.set_speed(0);
   if (abs(idle_left_speed) <= ACCEL_INCREMENT && abs(idle_right_speed) <= ACCEL_INCREMENT) {
     idle_left_speed = 1;

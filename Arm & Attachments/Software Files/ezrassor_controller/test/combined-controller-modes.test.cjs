@@ -29,11 +29,11 @@ test('Camera toggles back to previous right-hand panel', async () => {
   assert.equal(getNextControlMode('camera', camera.controlMode, camera.previousControlMode).controlMode, 'arm');
 });
 
-test('Default arm bridge uses separate port from rover service', async () => {
-  const {getDefaultArmBridgeHost} = await loadHelpers();
-  assert.equal(getDefaultArmBridgeHost('192.168.10.3:5000'), '192.168.10.3:3000');
-  assert.equal(getDefaultArmBridgeHost('http://192.168.10.3:5000/'), '192.168.10.3:3000');
-  assert.equal(getDefaultArmBridgeHost(''), '127.0.0.1:3000');
+test('Arm controls use the same ROS host as rover driving', async () => {
+  const {getRosControlHost} = await loadHelpers();
+  assert.equal(getRosControlHost('192.168.10.3:5000'), '192.168.10.3:5000');
+  assert.equal(getRosControlHost('http://192.168.10.3:5000/'), '192.168.10.3:5000');
+  assert.equal(getRosControlHost(''), '');
 });
 
 test('Wheel controls persist across drum arm and camera modes', () => {
@@ -41,8 +41,9 @@ test('Wheel controls persist across drum arm and camera modes', () => {
   const app = fs.readFileSync(path.join(__dirname, '../App.js'), 'utf8');
   const armPanel = fs.readFileSync(path.join(__dirname, '../src/components/app/ArmControlPanel.js'), 'utf8');
   assert.match(rover, /Wheel buttons[\s\S]*?Keep the original rover drum panel/);
-  assert.match(rover, /onPressIn=\{\(\) => this\.pressWheel\(WheelOperation\.FORWARD\)\}/);
-  assert.match(rover, /onPressOut=\{\(\) => this\.stopWheels\(\)\}/);
+  assert.match(rover, /onPress=\{\(\) => this\.pressWheel\(WheelOperation\.FORWARD\)\}/);
+  assert.doesNotMatch(rover, /onPressOut=\{\(\) => this\.stopWheels\(\)\}/);
+  assert.match(rover, /onPress=\{\(\) => this\.stopWheels\(true\)\}/);
   assert.match(rover, /<ArmControlPanel/);
   assert.match(rover, /this\.renderCameraPanel\(\)/);
   assert.match(app, /name="Paver Arm Controller Screen"[\s\S]*?component=\{ControllerScreen\}/);
