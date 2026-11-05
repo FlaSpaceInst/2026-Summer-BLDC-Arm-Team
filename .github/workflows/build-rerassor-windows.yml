@@ -1,0 +1,26 @@
+name: Build RE-RASSOR Windows controller
+on:
+  workflow_dispatch:
+
+jobs:
+  windows-controller:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build portable and installer EXEs
+        shell: pwsh
+        run: |
+          & '.\Arm & Attachments\Software Files\ezrassor_controller\desktop\build-windows.ps1'
+      - name: Upload portable and installer EXEs
+        uses: actions/upload-artifact@v4
+        with:
+          name: RE-RASSOR-Windows-Controller
+          path: Arm & Attachments/Software Files/ezrassor_controller/release/*.exe
+          if-no-files-found: error

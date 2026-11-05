@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
-import { View, Image } from 'react-native';
+import { View, Image, Platform, useWindowDimensions } from 'react-native';
 import Entypo from '@expo/vector-icons/Entypo';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
-import LottieView from 'lottie-react-native';
-import logo from 'ezrassor-app/assets/fsiLogo.png';
+import LoadingAnimation from './LoadingAnimation';
+import logo from '../../../assets/fsiLogo.png';
+import { getWebLayout } from '../../functionality/web-layout';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -14,6 +15,16 @@ SplashScreen.preventAutoHideAsync();
 export default function Loading({ navigation }) {
   const [appIsReady, setAppIsReady] = useState(false);
   const animation = useRef(null);
+  const { width, height } = useWindowDimensions();
+  const webLayout = getWebLayout(width, height, Platform.OS);
+  let logoContainerStyle = { flex: 1, flexDirection: 'column', marginTop: 60 };
+  let loaderContainerStyle = { flex: 1, flexDirection: 'column', marginBottom: 50 };
+  let loadingStyle = { flex: 1, width: 400, height: 400 };
+  if (webLayout.isWeb) {
+    logoContainerStyle = { justifyContent: 'center', alignItems: 'center' };
+    loaderContainerStyle = { height: Math.min(height * 0.32, 180), justifyContent: 'center' };
+    loadingStyle = { width: Math.min(width * 0.5, 180), height: Math.min(height * 0.32, 180) };
+  }
 
   useEffect(() => {
     async function prepare() {
@@ -55,18 +66,25 @@ export default function Loading({ navigation }) {
     >
 
       {/* FSI logo. */}
-      <View style={{ flex: 1, flexDirection: 'column', marginTop: 60 }}>
-        <Image source={logo} style={{ width: 305, height: 159 }} />
+      <View style={logoContainerStyle}>
+        <Image
+          source={logo}
+          resizeMode="contain"
+          style={{
+            width: Math.min(width * 0.75, 305),
+            height: Math.min(height * 0.35, 159)
+          }}
+        />
       </View>
       
       {/* Loading dots animation. */}
-      <View style={{ flex: 1, flexDirection: 'column', marginBottom: 50 }}>
-        <LottieView
+      <View style={loaderContainerStyle}>
+        <LoadingAnimation
           autoPlay
           ref={animation}
-          style={{ flex: 1, width: 400, height: 400 }}
+          style={loadingStyle}
           resizeMode="cover"
-          source={require('ezrassor-app/assets/loading.json')}
+          source={require('../../../assets/loading.json')}
         />
       </View>
 

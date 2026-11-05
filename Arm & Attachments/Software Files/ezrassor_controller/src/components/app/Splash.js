@@ -1,105 +1,128 @@
-import React, { useCallback, useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { View, Image } from 'react-native';
+import { View, Image, Platform, useWindowDimensions } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
-import LottieView from 'lottie-react-native';
-import ControllerStyle from 'ezrassor-app/src/styles/controller';
-import fsg from 'ezrassor-app/assets/floridaspacegrant.png';
+import LoadingAnimation from './LoadingAnimation';
+import ControllerStyle from '../../styles/controller';
+import { getWebLayout } from '../../functionality/web-layout';
+import fsg from '../../../assets/floridaspacegrant.png';
 import { isIpReachable } from '../../functionality/connection';
+import { getStartupRoute } from '../../functionality/startup';
 
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch((error) => {
+  console.warn('Unable to hold native splash screen:', error);
+});
 
 /**
- * React component for a splash screen.
- * 
- * First component the user sees when the app first opens.
+ * First screen shown when the RE-RASSOR controller opens.
+ * The transition is scheduled by an effect, not by an onLayout callback.
  */
 export default function Splash({ navigation }) {
+  const [appIsReady, setAppIsReady] = useState(false);
+  const animation = useRef(null);
+  const { width, height } = useWindowDimensions();
+  const webLayout = getWebLayout(width, height, Platform.OS);
+  let loaderContainerStyle = { flex: 1, alignItems: 'center' };
+  if (webLayout.isWeb) {
+    loaderContainerStyle = {
+      width: Math.min(width * 0.5, 220),
+      height: Math.min(Math.max(height * 0.22, 64), 160),
+      alignItems: 'center'
+    };
+  }
 
-	const [appIsReady, setAppIsReady] = useState(false);
-	const animation = useRef(null);
+  useEffect(() => {
+    let active = true;
 
-	const getIpFromStorage = async () => {
-		try {
-			const value = await AsyncStorage.getItem('myIp');
+    async function prepare() {
+      try {
+        await Font.loadAsync({ NASA: require('../../../assets/nasa.ttf') });
+        animation.current?.play();
+      } catch (error) {
+        console.warn('Unable to load splash font:', error);
+      } finally {
+        if (active) {
+          setAppIsReady(true);
+        }
+      }
+    }
 
-			if (value !== null) {
-				console.log('There is IP stored:', value);
-				await redirectBasedOnReachability(value);
-			} else {
-				console.log('IP is null.');
-				navigation.navigate('IPConnect Screen');
-			}
-		} catch (error) {
-			// Error retrieving data. Log error but do nothing otherwise.
-			console.log(error);
-		}
-	}
+    prepare();
 
-	/**
-	 * Check if we can connect to the ip address at `this.state.ip`. Then redirect to either
-	 * a "can connect" or "cannot connect" screen.
-	 */
-	const redirectBasedOnReachability = async (ip) => {
-		const timeoutTime = 4000;
+    return () => {
+      active = false;
+    };
+  }, []);
 
-		if (await isIpReachable(ip)) {
-			console.log('Connected successfully!');
-			navigation.navigate('Controller Screen');
-		} else {
-			console.log('IP Address tried: ', ip);
-			console.log('Trouble connecting. Please check rover connection or device connection.');
-			navigation.navigate('IPConnect Screen');
-		}
-	}
+  useEffect(() => {
+    if (!appIsReady) {
+      return;
+    }
 
-	useEffect(() => {
-		async function prepare() {
-			try {
-				await Font.loadAsync({ NASA: require('../../../assets/nasa.ttf') });
-				animation.current?.play();
-			} catch (e) {
-				console.warn(e);
-			} finally {
-				setAppIsReady(true);
-			}
-		}
-		prepare();
-	}, []);
+    let cancelled = false;
 
-	const onLayoutRootView = useCallback(async () => {
-		const timeoutTime = 2000;
+    // Never let the native splash overlay block the React Native screen.
+    try {
+      SplashScreen.hideAsync().catch((error) => {
+        console.warn('Unable to hide native splash screen:', error);
+      });
+    } catch (error) {
+      console.warn('Unable to hide native splash screen:', error);
+    }
 
-		if (appIsReady) {
-			await SplashScreen.hideAsync();
-			setTimeout(() => {
-				getIpFromStorage();
-			}, timeoutTime);
-		}
-	}, [appIsReady]);
+    const timer = setTimeout(async () => {
+      let route = 'IPConnect Screen';
 
-	if (!appIsReady) {
-		return null;
-	}
+      try {
+        route = await getStartupRoute(
+          Platform.OS,
+          () => AsyncStorage.getItem('myIp'),
+          isIpReachable
+        );
+      } catch (error) {
+        console.warn('Startup connection check failed:', error);
+      }
 
-	return (
-		<View style={ControllerStyle.splashScreen} onLayout={onLayoutRootView}>
+      if (!cancelled) {
+        navigation.replace(route);
+      }
+    }, 1800);
 
-			{/* FSI logo. */}
-			<Image source={fsg} style={ControllerStyle.splashFsiLogo} />
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [appIsReady, navigation]);
 
-			{/* Body container. */}
-			<View flex={1} alignItems="center">
-				<LottieView
-					autoPlay
-					ref={animation}
-					style={ControllerStyle.splashLoading}
-					resizeMode="center"
-					source={require('ezrassor-app/assets/loading.json')}
-				/>
-			</View>
+  if (!appIsReady) {
+    return null;
+  }
 
-		</View>
-	);
+  return (
+    <View style={[ControllerStyle.splashScreen, webLayout.isWeb && { padding: 16 }]}>
+      <Image
+        source={fsg}
+        resizeMode="contain"
+        style={[
+          ControllerStyle.splashFsiLogo,
+          webLayout.isWeb && {
+            width: Math.min(width * 0.8, 550),
+            height: Math.min(height * 0.42, 300),
+            marginTop: 0,
+            flexShrink: 0
+          }
+        ]}
+      />
+      <View style={loaderContainerStyle}>
+        <LoadingAnimation
+          autoPlay
+          ref={animation}
+          style={ControllerStyle.splashLoading}
+          resizeMode="center"
+          source={require('../../../assets/loading.json')}
+        />
+      </View>
+    </View>
+  );
 }
