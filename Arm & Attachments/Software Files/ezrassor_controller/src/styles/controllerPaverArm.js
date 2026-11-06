@@ -135,19 +135,20 @@ const ControllerStyle = StyleSheet.create({
 
   buttonBackground: {
     flex: 1, 
-    maxHeight: 100,
-    width: 80,
+    minHeight: 72,
+    minWidth: 95,
     backgroundColor: '#3a3d3d', 
     borderRadius: 20,
     elevation: 5, 
     justifyContent: 'center', 
     alignItems: 'center',
-    margin: 20,
+    margin: 6,
     paddingVertical: 8,
   },
 
   PaverArmBaseButton: {
-    flex: 3,
+    flex: 1,
+    minHeight: 105,
     marginLeft: 5,
     borderRadius: 10,
     elevation: 3,

@@ -1,5 +1,4 @@
-import { NativeStackView } from '@react-navigation/native-stack';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 import { normalize } from '../functionality/display';
 
 const ControllerStyle = StyleSheet.create({
