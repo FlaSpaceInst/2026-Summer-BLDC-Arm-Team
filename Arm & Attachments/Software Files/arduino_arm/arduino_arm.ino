@@ -1,5 +1,5 @@
-#include "src/DRV8825.h"
-#include "src/commands.h"
+#include "DRV8825.h"
+#include "commands.h"
 
 // ============ MICROSTEPPING CONFIGURATION ============
 // Change this value to match your physical jumper configuration:
@@ -16,12 +16,15 @@
 // ============ SPEED & ACCELERATION CONFIG ============
 // armSpd: speed (RPM) of the arm shoulder & elbow
 #define ARM_SPD 20 
+// baseSpd: speed (RPM) of the arm base
+#define BASE_SPD 20
 
 // =====================================================
 
 // Switch if either motor is rotating the wrong way
 #define DIR_SHOULDER true
 #define DIR_ELBOW true
+#define DIR_BASE false
 
 // extruder 1 (arm shoulder)
 #define E0_STEP_PIN 26
@@ -33,11 +36,19 @@
 #define Y_DIR_PIN 61
 #define Y_ENABLE_PIN 56
 
+// Z driver (arm base)
+#define Z_STEP_PIN 46
+#define Z_DIR_PIN 48
+#define Z_ENABLE_PIN 62
+
 // arm shoulder: E0
 DRV8825 armShoulder(E0_STEP_PIN, E0_DIR_PIN, E0_ENABLE_PIN, STEPS_PER_REV);
 
 // arm elbow: E1
 DRV8825 armElbow(Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, STEPS_PER_REV);
+
+// arm base: Z
+DRV8825 armBase(Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, STEPS_PER_REV);
 
 // global checker for halted
 int halt = 0;
@@ -45,8 +56,10 @@ int halt = 0;
 byte last_command = STOP;
 long shoulderSpeedRpm = ARM_SPD;
 long forearmSpeedRpm = ARM_SPD;
+long baseSpeedRpm = BASE_SPD;
 bool shoulderMoving = false;
 bool forearmMoving = false;
+bool baseMoving = false;
 
 void setShoulderSpeedLevel(int level) {
   shoulderSpeedRpm = max(1L, (long)(ARM_SPD * level / 3));
@@ -59,6 +72,13 @@ void setForearmSpeedLevel(int level) {
   forearmSpeedRpm = max(1L, (long)(ARM_SPD * level / 3));
   if (forearmMoving) {
     armElbow.set_speed(forearmSpeedRpm);
+  }
+}
+
+void setBaseSpeedLevel(int level) {
+  baseSpeedRpm = max(1L, (long)(BASE_SPD * level / 3));
+  if (baseMoving) {
+    armBase.set_speed(baseSpeedRpm);
   }
 }
 
@@ -81,6 +101,10 @@ void setup() {
   armElbow.set_enabled(true);
   armElbow.set_direction(false);
   armElbow.set_speed(0);
+
+  armBase.set_enabled(true);
+  armBase.set_direction(false);
+  armBase.set_speed(0);
 }
 
 void loop() {
@@ -95,6 +119,7 @@ void loop() {
 void update_motors() {
   armShoulder.update();
   armElbow.update();
+  armBase.update();
 }
 
 // checks for commands being sent over the Serial port to the arduino/Ramps board
@@ -122,11 +147,22 @@ void read_serial() {
       case FOREARM_SPEED_FAST:
         setForearmSpeedLevel(3);
         break;
+      case BASE_SPEED_SLOW:
+        setBaseSpeedLevel(1);
+        break;
+      case BASE_SPEED_MEDIUM:
+        setBaseSpeedLevel(2);
+        break;
+      case BASE_SPEED_FAST:
+        setBaseSpeedLevel(3);
+        break;
       case STOP:
         shoulderMoving = false;
         forearmMoving = false;
+        baseMoving = false;
         armShoulder.set_speed(0);
         armElbow.set_speed(0);
+        armBase.set_speed(0);
         break;
       
       case ARM_FWD_ELBOW:
@@ -188,21 +224,40 @@ void read_serial() {
         armElbow.set_speed(0);
         break;
 
+      case ARM_ROTATE_CW:
+        baseMoving = true;
+        armBase.set_direction(DIR_BASE);
+        armBase.set_speed(baseSpeedRpm);
+        break;
+
+      case ARM_ROTATE_CCW:
+        baseMoving = true;
+        armBase.set_direction(!DIR_BASE);
+        armBase.set_speed(baseSpeedRpm);
+        break;
+
+      case ARM_STOP_ROTATE:
+        baseMoving = false;
+        armBase.set_speed(0);
+        break;
+
       case ARM_STOP_ALL:
         shoulderMoving = false;
         forearmMoving = false;
-        //armBase.set_speed(0);
+        baseMoving = false;
         armShoulder.set_speed(0);
         armElbow.set_speed(0);
-        // Also stops effector
+        armBase.set_speed(0);
         break;
 
       case HALT:
         shoulderMoving = false;
         forearmMoving = false;
+        baseMoving = false;
         halt = 1;
         armShoulder.set_speed(0);
         armElbow.set_speed(0);
+        armBase.set_speed(0);
         break;
 
       // All of these are handled fully by other arduinos
@@ -213,17 +268,16 @@ void read_serial() {
       case ARM_OPEN_EFFECTOR:
       case ARM_CLOSE_EFFECTOR:
       case ARM_STOP_EFFECTOR:
-      case ARM_ROTATE_CW:
-      case ARM_ROTATE_CCW:
-      case ARM_STOP_ROTATE:
         break;
 
       default:
         shoulderMoving = false;
         forearmMoving = false;
+        baseMoving = false;
         digitalWrite(LED_BUILTIN, LOW);
         armShoulder.set_speed(0);
         armElbow.set_speed(0);
+        armBase.set_speed(0);
         break;
     }
   }
