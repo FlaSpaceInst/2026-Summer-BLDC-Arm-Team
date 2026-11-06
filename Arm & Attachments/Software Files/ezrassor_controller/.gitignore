@@ -1,0 +1,9 @@
+node_modules/
+.expo/
+web-build/
+dist/
+release/
+desktop/node_modules/
+desktop/web-build/
+desktop/dist/
+*.log

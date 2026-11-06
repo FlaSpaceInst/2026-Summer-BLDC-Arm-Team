@@ -1,16 +1,19 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Text,
   View,
   Image,
   StatusBar,
-  Pressable
+  Pressable,
+  ScrollView,
+  Platform,
+  useWindowDimensions
 } from 'react-native';
-import ControllerStyle from 'ezrassor-app/src/styles/controller';
+import ControllerStyle from '../../styles/controller';
 import * as Font from 'expo-font';
-import logo from 'ezrassor-app/assets/fsiLogo.png';
+import logo from '../../../assets/fsiLogo.png';
 import * as SplashScreen from 'expo-splash-screen';
-import { normalize } from '../../functionality/display';
+import { getWebLayout } from '../../functionality/web-layout';
 
 const CONNECTION_TEXT = `Troubleshooting connection errors:
 1. Make sure both the phone and the rover are connected to WIFI.
@@ -21,83 +24,100 @@ const CONNECTION_TEXT = `Troubleshooting connection errors:
 /**
  * React component used as a help screen for users at the <IPConnect> screen.
  */
-export default class ConnectionHelp extends React.Component {
+export default function ConnectionHelp({ navigation }) {
+  const [isLoading, setIsLoading] = useState(true);
+  const { width, height } = useWindowDimensions();
+  const webLayout = getWebLayout(width, height, Platform.OS);
 
-  constructor(props) {
-    SplashScreen.hideAsync();
-    super(props);
+  useEffect(() => {
+    let active = true;
 
-    this.state = {
-      isLoading: true
-    };
-
-    this.connectionText = CONNECTION_TEXT;
-  }
-
-  async componentDidMount() {
-    await Font.loadAsync({ NASA: require('../../../assets/nasa.ttf'), });
-
-    this.setState({ isLoading: false });
-  }
-
-  redirect() { }
-
-  render() {
-    // I.e., don't do full render if font is still loading...
-    if (this.state.isLoading) {
-      return <View style={{ backgroundColor: '#5D6061' }} />;
+    async function prepare() {
+      try {
+        await SplashScreen.hideAsync();
+        await Font.loadAsync({ NASA: require('../../../assets/nasa.ttf') });
+      } catch (error) {
+        console.warn('Could not load the help screen font:', error);
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
     }
 
-    return (
-      <View style={ControllerStyle.screenLayout} >
+    prepare();
+    return () => {
+      active = false;
+    };
+  }, []);
 
-        <StatusBar backgroundColor="#2E3030" barStyle="dark-content" />
+  if (isLoading) {
+    return <View style={{ flex: 1, backgroundColor: '#2E3030' }} />;
+  }
 
-        {/* Title container. */}
-        <View style={[ControllerStyle.title]}>
-          <Text adjustsFontSizeToFit={true} numberOfLines={1} fontSize={normalize(50)} style={[ControllerStyle.titleText]}>
-            RE-RASSOR Connection Help
+  return (
+    <ScrollView
+      style={{ flex: 1, backgroundColor: '#2E3030' }}
+      contentContainerStyle={{
+        flexGrow: 1,
+        minHeight: webLayout.viewportMinHeight,
+        alignItems: 'center',
+        padding: webLayout.helpPadding,
+        justifyContent: 'space-between',
+        gap: 18
+      }}
+    >
+      <StatusBar backgroundColor="#2E3030" barStyle="light-content" />
+      <View style={[
+        ControllerStyle.title,
+        { width: '100%', maxWidth: 840, minHeight: 72, height: undefined, padding: 12 }
+      ]}>
+        <Text style={[
+          ControllerStyle.titleText,
+          { fontSize: webLayout.helpTitleSize }
+        ]}>
+          RE-RASSOR Connection Help
+        </Text>
+      </View>
+      <View style={{
+        width: '100%',
+        maxWidth: 850,
+        flexGrow: 1,
+        justifyContent: 'center',
+        paddingVertical: 16
+      }}>
+        <View style={{
+          backgroundColor: '#4a4d4e',
+          borderRadius: 15,
+          paddingHorizontal: webLayout.helpTextPaddingHorizontal,
+          paddingVertical: webLayout.helpTextPaddingVertical
+        }}>
+          <Text style={{
+            fontFamily: 'NASA',
+            fontSize: webLayout.helpTextSize,
+            lineHeight: webLayout.helpLineHeight,
+            color: '#fff'
+          }}>
+            {CONNECTION_TEXT}
           </Text>
         </View>
-
-        {/* Body container. */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-
-          {/* FSI logo. */}
-          <Image source={logo} style={ControllerStyle.fsiLogo} />
-
-          {/* Inner-body container. */}
-          <View adjustsFontSizeToFit={true} backgroundColor="#4a4d4e" width="70%" flexWrap="nowrap" style={ControllerStyle.containerTwo}>
-            <Text
-              adjustsFontSizeToFit={true}
-              numberOfLines={8}
-              style={{
-                alignSelf: 'center',
-                fontFamily: 'NASA',
-                margin: 10,
-                fontSize: normalize(30, 1.5),
-                color: '#fff'
-                }}
-            >
-              {this.connectionText}
-            </Text>
-          </View>
-
-          {/* Back button. */}
-          <Pressable
-            style={[ControllerStyle.buttonContainer]}
-            onPress={() => {
-              this.props.navigation.goBack(null)
-            }}
-          >
-            <Text adjustsFontSizeToFit={true} numberOfLines={1} style={[ControllerStyle.buttonText]}>
-              Back
-            </Text>
-          </Pressable>
-
-        </View>
-
       </View>
-    );
-  }
+      <View style={{
+        width: '100%',
+        maxWidth: 1000,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <Image source={logo} resizeMode="contain" style={{ width: webLayout.helpLogoWidth, height: 65 }} />
+        <Pressable
+          style={{ backgroundColor: '#fff', borderRadius: 8, minWidth: 125, minHeight: 54, justifyContent: 'center' }}
+          onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+        >
+          <Text style={{ fontFamily: 'NASA', color: '#202323', fontSize: 28, textAlign: 'center' }}>Back</Text>
+        </Pressable>
+      </View>
+    </ScrollView>
+  );
 }

@@ -31,7 +31,7 @@ function createApp(serialPort) {
     response.status(200).json({ success: true, serialOpen: serialPort.isOpen !== false });
   });
 
-  // The controller currently posts its arm JSON to the host root, e.g. http://IP:3000/.
+  // The controller currently posts its arm JSON to the host root e.g. http://IP:3000/.
   app.post('/', async (request, response, next) => {
     try {
       const commands = commandsFromRequest(request.body);
