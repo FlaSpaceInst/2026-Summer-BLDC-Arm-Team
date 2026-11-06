@@ -15,7 +15,7 @@
 
 // ============ SPEED & ACCELERATION CONFIG ============
 // armSpd: speed (RPM) of the arm shoulder & elbow
-#define ARM_SPD 20 
+#define ARM_SPD 100
 // baseSpd: speed (RPM) of the arm base
 #define BASE_SPD 20
 
