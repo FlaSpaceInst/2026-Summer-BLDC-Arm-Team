@@ -272,6 +272,10 @@ void read_serial() {
       last_command = LEFT;
     if (command == "STOP")
       last_command = STOP;
+    if (command == "OPEN_EFFECTOR")
+      last_command = OPEN_EFFECTOR;
+    if (command == "CLOSE_EFFECTOR")
+      last_command = CLOSE_EFFECTOR;
     
     switch (last_command) {
       case STOP:

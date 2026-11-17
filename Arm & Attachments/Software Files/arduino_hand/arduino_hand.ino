@@ -185,7 +185,25 @@ void update_motors() {
 void read_serial() {
   if (Serial.available()) {
     
-    last_command = Serial.read();
+    // last_command = Serial.read();
+    
+    String command = Serial.readStringUntil('\n');
+    if (command == "FWD")
+      last_command = FWD;
+    if (command == "REV")
+      last_command = REV;
+    if (command == "RIGHT")
+      last_command = RIGHT;
+    if (command == "LEFT")
+      last_command = LEFT;
+    if (command == "STOP")
+      last_command = STOP;
+    if (command == "OPEN_EFFECTOR")
+      last_command = OPEN_EFFECTOR;
+    if (command == "CLOSE_EFFECTOR")
+      last_command = CLOSE_EFFECTOR;
+    if (command == "STOP_EFFECTOR")
+      last_command = STOP_EFFECTOR;
 
     switch (last_command) {
       case GRIPPER_SPEED_SLOW:
