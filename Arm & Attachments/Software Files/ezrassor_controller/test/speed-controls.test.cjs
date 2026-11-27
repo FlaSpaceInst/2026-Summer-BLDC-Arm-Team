@@ -63,17 +63,17 @@ test('rover-wide STOP uses the implemented ROS /stop route', async () => {
   await service.executeRobotCommand(Robot.ALL, Operation.STOP, 3);
   assert.deepEqual(writes, [{_route:'/stop'}]);
 });
-test('UI uses original embedded three-dot speed lights, not separate preset buttons', () => {
+test('wheel speed stays per-drive while arm uses one shared three-dot selector', () => {
   const wheel = fs.readFileSync(path.join(root,'src/components/app/ControllerScreen.js'),'utf8');
   const arm = fs.readFileSync(path.join(root,'src/components/app/ArmControlPanel.js'),'utf8');
   assert.match(wheel, /getWheelIndicatorLevels/);
   assert.match(wheel, /label="Left wheel speed"/);
   assert.match(wheel, /label="Right wheel speed"/);
-  assert.match(arm, /indicatorLevel/);
-  assert.match(arm, /label=\{label \+ ' speed'\}/);
+  assert.match(arm, /renderArmSpeedSelector\(\)/);
+  assert.match(arm, /ARM SPEED/);
+  assert.match(arm, /cycleArmSpeed\(\)/);
+  assert.match(arm, /onPressIn=\{\(\) => this\.startMotion/);
+  assert.match(arm, /onPressOut=\{\(\) => this\.releaseMotion/);
   assert.doesNotMatch(wheel, /renderWheelSpeed\(\)/);
-  assert.doesNotMatch(arm, /renderArmSpeed\(\)/);
-  assert.doesNotMatch(wheel, /selectWheelSpeed\(/);
-  assert.doesNotMatch(arm, /selectArmSpeed\(/);
   assert.doesNotMatch(arm, /armBridgeIp|:3000/);
 });

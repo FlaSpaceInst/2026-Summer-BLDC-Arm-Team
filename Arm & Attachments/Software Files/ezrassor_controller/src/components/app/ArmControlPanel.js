@@ -5,13 +5,16 @@ import { FontAwesome } from '@expo/vector-icons';
 import EZARM from '../../api/ezrassor-service-paver-arm';
 import { Robot, Operation } from '../../enumerations/robot-commands-paver-arm';
 import { getRosControlHost } from '../../functionality/control-modes';
-import { nextTapSpeed } from '../../functionality/tap-speed';
-import SpeedDots from './SpeedDots';
+
+const GRIPPER_HOLD_REFRESH_MS = 700;
 
 /**
- * The existing arm commands in a compact panel beside the rover wheel controls.
- * Each tap starts movement or increases speed to Level 3 the red STOP
- * button or a mode change stops the current joint.
+ * Compact paver-arm controls beside the rover wheel controls.
+ *
+ * All arm joints share one selected speed. Movement uses a deadman control:
+ * press and hold to move, release to stop. The gripper command is refreshed
+ * while held because the hand firmware intentionally stops each movement
+ * pulse after about one second.
  */
 export default class ArmControlPanel extends React.Component {
   constructor(props) {
@@ -22,14 +25,14 @@ export default class ArmControlPanel extends React.Component {
       baseAvailable: false,
       statusMessage: 'CONNECTING TO ROS 2...',
       activeControl: '',
-      armSpeed: 0
+      armSpeed: 1
     };
     this.armService = new EZARM(this.state.rosHost);
     this.activePart = null;
     this.activeOperation = null;
-    this.activeSpeedLevel = 0;
     this.componentMounted = false;
     this.rosCheckId = 0;
+    this.gripperHoldTimer = null;
   }
 
   componentDidMount() {
@@ -56,6 +59,7 @@ export default class ArmControlPanel extends React.Component {
   componentWillUnmount() {
     this.componentMounted = false;
     this.rosCheckId += 1;
+    this.clearGripperHoldTimer();
     this.stopMotion();
   }
 
@@ -144,15 +148,56 @@ export default class ArmControlPanel extends React.Component {
     } catch (error) {
       this.activePart = null;
       this.activeOperation = null;
-      this.activeSpeedLevel = 0;
+      this.clearGripperHoldTimer();
       this.armService.allStop().catch(() => {});
       if (this.componentMounted) {
-        this.setState({ rosReady: false, activeControl: '', armSpeed: 0, statusMessage: 'ROS COMMAND FAILED: ' + error.message });
+        this.setState({ rosReady: false, activeControl: '', statusMessage: 'ROS COMMAND FAILED: ' + error.message });
       }
     }
   }
 
-  pressMotion(part, operation, label) {
+  clearGripperHoldTimer() {
+    if (this.gripperHoldTimer) {
+      clearInterval(this.gripperHoldTimer);
+      this.gripperHoldTimer = null;
+    }
+  }
+
+  startGripperHoldRefresh(part, operation) {
+    this.clearGripperHoldTimer();
+    if (part !== Robot.ENDEFFECTOR) {
+      return;
+    }
+
+    this.gripperHoldTimer = setInterval(() => {
+      if (this.activePart !== part || this.activeOperation !== operation) {
+        this.clearGripperHoldTimer();
+        return;
+      }
+      this.sendCommand(part, operation, this.state.armSpeed);
+    }, GRIPPER_HOLD_REFRESH_MS);
+  }
+
+  cycleArmSpeed() {
+    let nextSpeed = this.state.armSpeed + 1;
+    if (nextSpeed > 3) {
+      nextSpeed = 1;
+    }
+
+    this.setState({ armSpeed: nextSpeed });
+
+    // If speed is changed while a control is held, apply it immediately.
+    if (this.activePart && this.state.rosReady) {
+      this.armService.setSpeed(this.activePart, nextSpeed).catch((error) => {
+        this.emergencyStop();
+        if (this.componentMounted) {
+          this.setState({ rosReady: false, statusMessage: 'ROS SPEED COMMAND FAILED: ' + error.message });
+        }
+      });
+    }
+  }
+
+  startMotion(part, operation, label) {
     if (this.props.offlineMode || !this.state.rosReady) {
       return;
     }
@@ -160,47 +205,41 @@ export default class ArmControlPanel extends React.Component {
       return;
     }
 
-    const sameDirection = this.activePart === part && this.activeOperation === operation;
-    let nextLevel = 1;
-    if (sameDirection) {
-      nextLevel = nextTapSpeed(this.activeOperation, operation, this.activeSpeedLevel);
-      if (nextLevel === this.activeSpeedLevel && part !== Robot.ENDEFFECTOR) {
+    if (this.activePart) {
+      const changingDirection = this.activePart !== part || this.activeOperation !== operation;
+      if (changingDirection) {
+        this.sendCommand(this.activePart, Operation.STOP);
+      } else {
         return;
       }
-    } else if (this.activePart) {
-      this.sendCommand(this.activePart, Operation.STOP);
     }
 
+    this.clearGripperHoldTimer();
     this.activePart = part;
     this.activeOperation = operation;
-    this.activeSpeedLevel = nextLevel;
     this.setState({
-      armSpeed: nextLevel,
       activeControl: label,
-      statusMessage: 'ARM: ' + label + ' / LEVEL ' + nextLevel
+      statusMessage: 'ARM: ' + label + ' / LEVEL ' + this.state.armSpeed
     });
 
-    if (sameDirection && part !== Robot.ENDEFFECTOR) {
-      // Updating speed without repeating direction preserves stepper motion.
-      this.armService.setSpeed(part, nextLevel).catch((error) => {
-        this.emergencyStop();
-        if (this.componentMounted) {
-          this.setState({ rosReady: false, statusMessage: 'ROS SPEED COMMAND FAILED: ' + error.message });
-        }
-      });
-    } else {
-      // The gripper firmware executes a finite-duration pulse. Every tap must send movement again to start/extend a new pulse at that speed.
-      this.sendCommand(part, operation, nextLevel);
+    this.sendCommand(part, operation, this.state.armSpeed);
+    this.startGripperHoldRefresh(part, operation);
+  }
+
+  releaseMotion(part, operation) {
+    if (this.activePart !== part || this.activeOperation !== operation) {
+      return;
     }
+    this.stopMotion();
   }
 
   stopMotion() {
     const part = this.activePart;
     this.activePart = null;
     this.activeOperation = null;
-    this.activeSpeedLevel = 0;
+    this.clearGripperHoldTimer();
     if (this.componentMounted) {
-      this.setState({ activeControl: '', armSpeed: 0, statusMessage: 'STOP REQUESTED' });
+      this.setState({ activeControl: '', statusMessage: 'STOP REQUESTED' });
     }
     if (part) {
       this.sendCommand(part, Operation.STOP);
@@ -210,9 +249,9 @@ export default class ArmControlPanel extends React.Component {
   emergencyStop() {
     this.activePart = null;
     this.activeOperation = null;
-    this.activeSpeedLevel = 0;
+    this.clearGripperHoldTimer();
     if (this.componentMounted) {
-      this.setState({ activeControl: '', armSpeed: 0, statusMessage: 'ARM STOP REQUESTED' });
+      this.setState({ activeControl: '', statusMessage: 'ARM E-STOP REQUESTED' });
     }
     this.sendCommand(Robot.ALL, Operation.STOP);
   }
@@ -241,34 +280,67 @@ export default class ArmControlPanel extends React.Component {
       buttonOpacity = 0.5;
     }
 
-    // Mirror the original D-pad lights within each joint's direction buttons.
-    // Only the active direction illuminates; positive is green, negative red.
-    let indicatorLevel = 0;
-    let indicatorSide = 'right';
-    if (operation === Operation.NEGATIVE) {
-      indicatorSide = 'left';
-    }
-    if (this.activePart === part && this.activeOperation === operation) {
-      indicatorLevel = this.state.armSpeed;
-      if (operation === Operation.NEGATIVE) {
-        indicatorLevel = -indicatorLevel;
-      }
-    }
     return (
       <TouchableOpacity
-        accessibilityLabel={label}
+        accessibilityLabel={label + '. Hold to move, release to stop.'}
         accessibilityRole="button"
         disabled={disabled}
-        onPress={() => this.pressMotion(part, operation, label)}
-        style={{ flex: 1, minHeight: 54, borderRadius: 9, backgroundColor, opacity: buttonOpacity, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 12 }}
+        onPressIn={() => this.startMotion(part, operation, label)}
+        onPressOut={() => this.releaseMotion(part, operation)}
+        style={{
+          flex: 1,
+          minHeight: 54,
+          borderRadius: 9,
+          backgroundColor,
+          opacity: buttonOpacity,
+          justifyContent: 'center',
+          alignItems: 'center',
+          flexDirection: 'row',
+          gap: 12
+        }}
       >
         <Text style={{ fontFamily: 'NASA', color: '#fff', fontSize: 15 }}>{text}</Text>
         <FontAwesome name={icon} size={24} color="#fff" />
-        <SpeedDots
-          level={indicatorLevel}
-          side={indicatorSide}
-          label={label + ' speed'}
+      </TouchableOpacity>
+    );
+  }
+
+  renderArmSpeedSelector() {
+    const dots = [];
+    for (let level = 1; level <= 3; level += 1) {
+      let backgroundColor = '#5b5b5b';
+      if (level <= this.state.armSpeed) {
+        backgroundColor = '#70fc00';
+      }
+      dots.push(
+        <View
+          key={level}
+          style={{ width: 8, height: 8, borderRadius: 8, backgroundColor, marginHorizontal: 4 }}
         />
+      );
+    }
+
+    return (
+      <TouchableOpacity
+        onPress={() => this.cycleArmSpeed()}
+        accessibilityRole="button"
+        accessibilityLabel={'Arm speed level ' + this.state.armSpeed + '. Tap to change speed.'}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: 38,
+          paddingHorizontal: 12,
+          borderRadius: 8,
+          backgroundColor: '#3a3d3d'
+        }}
+      >
+        <Text style={{ color: '#fff', fontFamily: 'NASA', fontSize: 12, marginRight: 8 }}>
+          ARM SPEED
+        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {dots}
+        </View>
       </TouchableOpacity>
     );
   }
@@ -282,10 +354,15 @@ export default class ArmControlPanel extends React.Component {
       <View style={{ width: '100%' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, gap: 8 }}>
           <Text style={{ color: '#fff', fontFamily: 'NASA', fontSize: 18 }}>PAVER ARM</Text>
-          <TouchableOpacity onPress={() => this.emergencyStop()} accessibilityLabel="Stop arm" style={{ padding: 8 }}>
+          <TouchableOpacity onPress={() => this.emergencyStop()} accessibilityLabel="Emergency stop arm" style={{ padding: 8 }}>
             <FontAwesome name="stop-circle-o" size={25} color="#ffb3b3" />
           </TouchableOpacity>
         </View>
+
+        <View style={{ marginBottom: 8 }}>
+          {this.renderArmSpeedSelector()}
+        </View>
+
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 10 }}>
           <Text style={{ color: '#dbe1e1', fontSize: 11, flex: 1 }} numberOfLines={2}>
             {statusText}

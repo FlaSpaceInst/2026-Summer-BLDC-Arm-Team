@@ -75,12 +75,13 @@ test('left and right wheel dots reflect signed direction when turning', () => {
   assert.equal(stopped.right, 0);
 });
 
-test('each arm direction button contains the embedded original indicator', () => {
-  assert.match(arm, /<FontAwesome name=\{icon\} size=\{24\} color="#fff" \/>\s*<SpeedDots/);
-  assert.match(arm, /indicatorSide = 'right'/);
-  assert.match(arm, /if \(operation === Operation\.NEGATIVE\) \{\s*indicatorSide = 'left'/);
-  assert.match(arm, /indicatorLevel = -indicatorLevel/);
-  assert.match(arm, /this\.activePart === part && this\.activeOperation === operation/);
-  assert.match(arm, /armSpeed: 0/);
-  assert.doesNotMatch(arm, /renderArmSpeed\(\)/);
+test('arm uses one shared three-dot speed selector and hold-to-move buttons', () => {
+  assert.match(arm, /renderArmSpeedSelector\(\)/);
+  assert.match(arm, /ARM SPEED/);
+  assert.match(arm, /armSpeed: 1/);
+  assert.match(arm, /onPressIn=\{\(\) => this\.startMotion/);
+  assert.match(arm, /onPressOut=\{\(\) => this\.releaseMotion/);
+  assert.match(arm, /level <= this\.state\.armSpeed/);
+  assert.doesNotMatch(arm, /<SpeedDots/);
 });
+
