@@ -141,6 +141,46 @@ export default class ControllerScreen extends React.Component {
     }
   }
 
+  emergencyStopAllControls() {
+    this.stopWheels(true);
+    this.sendOperation(Robot.ALL, Operation.STOP);
+    if (this.armPanelRef.current) {
+      this.armPanelRef.current.emergencyStop();
+    }
+  }
+
+  isEditableKeyboardTarget(target) {
+    if (!target) {
+      return false;
+    }
+
+    const tagName = String(target.tagName || '').toLowerCase();
+    if (tagName === 'input' || tagName === 'textarea' || tagName === 'select') {
+      return true;
+    }
+    if (target.isContentEditable === true) {
+      return true;
+    }
+    return false;
+  }
+
+  handleEmergencyStopKey(event) {
+    if (!event || event.repeat) {
+      return;
+    }
+    if (this.isEditableKeyboardTarget(event.target)) {
+      return;
+    }
+
+    const isSpacebar = event.code === 'Space' || event.key === ' ';
+    if (!isSpacebar) {
+      return;
+    }
+
+    event.preventDefault();
+    this.emergencyStopAllControls();
+  }
+
   renderCameraPanel() {
     const roverIp = this.state.ip;
     let cameraSource = '';
@@ -187,10 +227,17 @@ export default class ControllerScreen extends React.Component {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
       this.onVisibilityChange = () => {
         if (document.hidden) {
-          this.stopAllControls();
+          this.emergencyStopAllControls();
         }
       };
+      this.onEmergencyStopKeyDown = (event) => this.handleEmergencyStopKey(event);
       document.addEventListener('visibilitychange', this.onVisibilityChange);
+      document.addEventListener('keydown', this.onEmergencyStopKeyDown);
+
+      if (typeof window !== 'undefined') {
+        this.onWindowBlur = () => this.emergencyStopAllControls();
+        window.addEventListener('blur', this.onWindowBlur);
+      }
     }
 
     // Set up the connection polling logic.
@@ -227,6 +274,12 @@ export default class ControllerScreen extends React.Component {
     }
     if (this.onVisibilityChange && typeof document !== 'undefined') {
       document.removeEventListener('visibilitychange', this.onVisibilityChange);
+    }
+    if (this.onEmergencyStopKeyDown && typeof document !== 'undefined') {
+      document.removeEventListener('keydown', this.onEmergencyStopKeyDown);
+    }
+    if (this.onWindowBlur && typeof window !== 'undefined') {
+      window.removeEventListener('blur', this.onWindowBlur);
     }
   }
 

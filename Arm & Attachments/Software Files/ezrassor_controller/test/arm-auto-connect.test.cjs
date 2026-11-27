@@ -24,6 +24,7 @@ function getRosControlHost(roverIp) {
 function createPanel(options = {}) {
   const fetchCalls = [];
   const commands = [];
+  const intervalCallbacks = [];
   const props = {
     roverIp: options.roverIp === undefined ? '192.168.10.3:5000' : options.roverIp,
     offlineMode: options.offlineMode === true
@@ -72,15 +73,21 @@ function createPanel(options = {}) {
   assert.ok(start >= 0 && end > start);
   const classSource = source.slice(start, end)
     .replace('export default class ArmControlPanel', 'class ArmControlPanel') + '\n}\nthis.ArmControlPanel = ArmControlPanel;';
+  const setInterval = (callback) => {
+    intervalCallbacks.push(callback);
+    return callback;
+  };
+  const clearInterval = () => {};
   const context = {
-    React: { Component }, EZARM, roverFetch, AbortController, setTimeout, clearTimeout,
+    React: { Component }, EZARM, roverFetch, AbortController, setTimeout, clearTimeout, setInterval, clearInterval,
+    GRIPPER_HOLD_REFRESH_MS: 700,
     Robot: { PLATE: 'plate', ALL: 'all', ENDEFFECTOR: 'hand', SHOULDER: 'shoulder', FOREARM: 'forearm' },
     Operation: { STOP: 'STOP', POSITIVE: 'POSITIVE', NEGATIVE: 'NEGATIVE' },
     nextTapSpeed: (current, next, level) => current === next && level >= 1 ? Math.min(level + 1, 3) : 1,
     getRosControlHost
   };
   vm.runInNewContext(classSource, context, { filename: 'ArmControlPanel.js' });
-  return { panel: new context.ArmControlPanel(props), fetchCalls, commands };
+  return { panel: new context.ArmControlPanel(props), fetchCalls, commands, intervalCallbacks };
 }
 async function flush() {
   await new Promise((resolve) => setImmediate(resolve));
@@ -150,18 +157,18 @@ test('base remains disabled until ROS wheel status explicitly enables it', async
   panel.componentWillUnmount();
 });
 
-test('arm taps use ROS and STOP resets speed', async () => {
+test('arm hold sends movement on press and STOP on release while preserving selected speed', async () => {
   const { panel, commands } = createPanel();
   panel.componentDidMount();
   await flush();
-  panel.pressMotion('shoulder', 'POSITIVE', 'Shoulder Up');
+  panel.startMotion('shoulder', 'POSITIVE', 'Shoulder Up');
   assert.equal(panel.state.armSpeed, 1);
-  panel.stopMotion();
-  assert.equal(panel.state.armSpeed, 0);
+  panel.releaseMotion('shoulder', 'POSITIVE');
+  assert.equal(panel.state.armSpeed, 1);
   await flush();
-  assert.deepEqual(commands.map(command => [command.host, command.operation]), [
-    ['192.168.10.3:5000', 'POSITIVE'],
-    ['192.168.10.3:5000', 'STOP']
+  assert.deepEqual(commands.map(command => [command.host, command.operation, command.speed]), [
+    ['192.168.10.3:5000', 'POSITIVE', 1],
+    ['192.168.10.3:5000', 'STOP', 1]
   ]);
   panel.componentWillUnmount();
 });
@@ -195,54 +202,47 @@ test('no saved bridge address or separate port 3000 is used by active Arm Mode',
   assert.match(source, /STOP REQUESTED/);
 });
 
-test('repeated shoulder taps send speed-only updates and cap at level 3', async () => {
-  const { panel, commands } = createPanel();
+test('shared arm speed cycles 1, 2, 3, 1', async () => {
+  const { panel } = createPanel();
   panel.componentDidMount();
   await flush();
-  for (let i = 0; i < 4; i += 1) {
-    panel.pressMotion('shoulder', 'POSITIVE', 'Shoulder Up');
-  }
-  await flush();
-  assert.deepEqual(commands.map(command => [command.operation, command.speed]), [
-    ['POSITIVE', 1], ['SPEED_ONLY', 2], ['SPEED_ONLY', 3]
-  ]);
+  assert.equal(panel.state.armSpeed, 1);
+  panel.cycleArmSpeed();
+  assert.equal(panel.state.armSpeed, 2);
+  panel.cycleArmSpeed();
   assert.equal(panel.state.armSpeed, 3);
-  panel.stopMotion();
-  assert.equal(panel.state.armSpeed, 0);
-  panel.pressMotion('shoulder', 'POSITIVE', 'Shoulder Up');
-  await flush();
-  assert.deepEqual(commands.at(-1).operation, 'POSITIVE');
-  assert.equal(commands.at(-1).speed, 1);
+  panel.cycleArmSpeed();
+  assert.equal(panel.state.armSpeed, 1);
   panel.componentWillUnmount();
 });
 
-test('direction reversal issues STOP before restarting at level 1', async () => {
+test('changing direction sends STOP before starting the new hold at selected speed', async () => {
   const { panel, commands } = createPanel();
   panel.componentDidMount();
   await flush();
-  panel.pressMotion('shoulder', 'POSITIVE', 'Shoulder Up');
-  panel.pressMotion('shoulder', 'POSITIVE', 'Shoulder Up');
-  panel.pressMotion('shoulder', 'NEGATIVE', 'Shoulder Down');
-  await flush();
-  assert.deepEqual(commands.map(command => command.operation), [
-    'POSITIVE', 'SPEED_ONLY', 'STOP', 'NEGATIVE'
-  ]);
-  assert.equal(commands.at(-1).speed, 1);
-  panel.componentWillUnmount();
-});
-
-test('repeated gripper taps restart the finite-duration gripper pulse', async () => {
-  const { panel, commands } = createPanel();
-  panel.componentDidMount();
-  await flush();
-  panel.pressMotion('hand', 'POSITIVE', 'Gripper Open');
-  panel.pressMotion('hand', 'POSITIVE', 'Gripper Open');
-  panel.pressMotion('hand', 'POSITIVE', 'Gripper Open');
+  panel.cycleArmSpeed();
+  panel.startMotion('shoulder', 'POSITIVE', 'Shoulder Up');
+  panel.startMotion('shoulder', 'NEGATIVE', 'Shoulder Down');
   await flush();
   assert.deepEqual(commands.map(command => [command.operation, command.speed]), [
-    ['POSITIVE', 1], ['POSITIVE', 2], ['POSITIVE', 3]
+    ['POSITIVE', 2], ['STOP', 1], ['NEGATIVE', 2]
   ]);
-  panel.emergencyStop();
-  assert.equal(panel.state.armSpeed, 0);
+  panel.releaseMotion('shoulder', 'NEGATIVE');
   panel.componentWillUnmount();
 });
+
+test('gripper hold refreshes the finite-duration pulse and release stops it', async () => {
+  const { panel, commands, intervalCallbacks } = createPanel();
+  panel.componentDidMount();
+  await flush();
+  panel.startMotion('hand', 'POSITIVE', 'Gripper Open');
+  assert.equal(intervalCallbacks.length, 1);
+  intervalCallbacks[0]();
+  panel.releaseMotion('hand', 'POSITIVE');
+  await flush();
+  assert.deepEqual(commands.map(command => [command.operation, command.speed]), [
+    ['POSITIVE', 1], ['POSITIVE', 1], ['STOP', 1]
+  ]);
+  panel.componentWillUnmount();
+});
+
